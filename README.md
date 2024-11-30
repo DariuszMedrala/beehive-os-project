@@ -1,2 +1,2 @@
 # beehive-os-project
-Operating System Project named "Beehive" 
+Operating Systems Project named "Beehive" 
