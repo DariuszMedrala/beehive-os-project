@@ -18,7 +18,7 @@ void* queenWorker(void* arg) {
         }
 
         int wolneMiejsce = hive->P - hive->currentBeesInHive;
-        if (wolneMiejsce >= queen->eggsCount) {
+        if (wolneMiejsce >= queen->eggsCount && queen->eggsCount < (hive->N - hive->beesAlive )) {
             printf("[Królowa] Składa %d jaj.\n", queen->eggsCount);
             // Tworzymy faktyczne wątki pszczół
             for (int i = 0; i < queen->eggsCount; i++) {
@@ -51,7 +51,7 @@ void* queenWorker(void* arg) {
             }
             printf("[Królowa] Teraz żywych pszczół: %d\n", hive->beesAlive);
         } else {
-            printf("[Królowa] Za mało miejsca w ulu (wolne: %d).\n", wolneMiejsce);
+            printf("[Królowa] Za mało miejsca w ulu (wolne: %d) lub brak miejsca w kolonii.\n", wolneMiejsce);
         }
 
         if (pthread_mutex_unlock(&hive->hiveMutex) != 0) {
