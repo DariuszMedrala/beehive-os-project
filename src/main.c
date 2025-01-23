@@ -91,7 +91,7 @@ int main(int argc, char* argv[]) {
         b->id = i;      // ID od 0 do workerBeesCount-1
         b->visits = 0;
         b->maxVisits = 3;  // po ilu wizytach pszczoła umiera
-        b->T_inHive = 2;   // czas w ulu
+        b->T_inHive = 60;   // czas w ulu
         b->hive = &hive;
 
         // Zwiększamy beesAlive
