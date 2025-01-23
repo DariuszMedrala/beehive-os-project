@@ -3,6 +3,7 @@
 void* beeWorker(void* arg) {
     BeeArgs* bee = (BeeArgs*)arg;
     HiveData* hive = bee->hive;
+    
 
     // Różne ziarno losowe dla każdej pszczoły (oparte np. o id)
     unsigned int seed = time(NULL) + bee->id;
@@ -15,20 +16,22 @@ void* beeWorker(void* arg) {
         int entrance = rand_r(&seed) % 2;  // Wybór jednego z dwóch wejść
 
         // Próba wejścia do ula
-        if (pthread_mutex_lock(&hive->hiveMutex) != 0) {
-            perror("[Pszczoła] pthread_mutex_lock");
+        if (pthread_mutex_lock(&hive->entranceMutex[entrance]) != 0) {
+            perror("[Pszczoła] pthread_mutex_lock (entrance)");
             pthread_exit(NULL);
         }
 
         while (hive->entranceInUse[entrance] == true || 
                hive->currentBeesInHive >= hive->maxCapacity) {
-            if (pthread_mutex_unlock(&hive->hiveMutex) != 0) {
-                perror("[Pszczoła] pthread_mutex_unlock (waiting)");
+            if (pthread_mutex_unlock(&hive->entranceMutex[entrance]) != 0) {
+                perror("[Pszczoła] pthread_mutex_unlock (waiting entrance)");
                 pthread_exit(NULL);
             }
-            usleep(100000); // 0.1 sek przerwy
-            if (pthread_mutex_lock(&hive->hiveMutex) != 0) {
-                perror("[Pszczoła] pthread_mutex_lock (waiting)");
+
+            entrance = 1 - entrance; // Przełącz wejście
+
+            if (pthread_mutex_lock(&hive->entranceMutex[entrance]) != 0) {
+                perror("[Pszczoła] pthread_mutex_lock (switch entrance)");
                 pthread_exit(NULL);
             }
         }
@@ -37,16 +40,30 @@ void* beeWorker(void* arg) {
         printf("[Pszczoła %d] Zajmuje wejście/wyjście: %d.\n",
                bee->id, entrance);
         hive->entranceInUse[entrance] = true;
+
+        // Symulacja czasu wejścia (1 sekunda)
+        sleep(3);
+
+        if (pthread_mutex_lock(&hive->hiveMutex) != 0) {
+            perror("[Pszczoła] pthread_mutex_lock (hive)");
+            pthread_exit(NULL);
+        }
+
         hive->currentBeesInHive++;
         printf("[Pszczoła %d] Wchodzi przez wejście/wyjście %d. (W ulu: %d)\n",
                bee->id, entrance, hive->currentBeesInHive);
+
+        if (pthread_mutex_unlock(&hive->hiveMutex) != 0) {
+            perror("[Pszczoła] pthread_mutex_unlock (hive)");
+            pthread_exit(NULL);
+        }
 
         // Zwolnienie wejścia natychmiast po wejściu
         hive->entranceInUse[entrance] = false;
         printf("[Pszczoła %d] Zwalnia wejście/wyjście: %d.\n",
                bee->id, entrance);
 
-        if (pthread_mutex_unlock(&hive->hiveMutex) != 0) {
+        if (pthread_mutex_unlock(&hive->entranceMutex[entrance]) != 0) {
             perror("[Pszczoła] pthread_mutex_unlock (enter)");
             pthread_exit(NULL);
         }
@@ -56,8 +73,35 @@ void* beeWorker(void* arg) {
         sleep(timeInHive);
 
         // Wyjście z ula
+        if (pthread_mutex_lock(&hive->entranceMutex[entrance]) != 0) {
+            perror("[Pszczoła] pthread_mutex_lock (exit entrance)");
+            pthread_exit(NULL);
+        }
+
+        while (hive->entranceInUse[entrance] == true) {
+            if (pthread_mutex_unlock(&hive->entranceMutex[entrance]) != 0) {
+                perror("[Pszczoła] pthread_mutex_unlock (waiting exit)");
+                pthread_exit(NULL);
+            }
+
+            entrance = 1 - entrance; // Przełącz wyjście
+
+            if (pthread_mutex_lock(&hive->entranceMutex[entrance]) != 0) {
+                perror("[Pszczoła] pthread_mutex_lock (switch exit)");
+                pthread_exit(NULL);
+            }
+        }
+
+        // Zajmujemy wejście przed wyjściem
+        printf("[Pszczoła %d] Zajmuje wejście/wyjście: %d przed wyjściem.\n",
+               bee->id, entrance);
+        hive->entranceInUse[entrance] = true;
+
+        // Symulacja czasu wyjścia (1 sekunda)
+        sleep(3);
+
         if (pthread_mutex_lock(&hive->hiveMutex) != 0) {
-            perror("[Pszczoła] pthread_mutex_lock (exit)");
+            perror("[Pszczoła] pthread_mutex_lock (hive exit)");
             pthread_exit(NULL);
         }
 
@@ -66,6 +110,16 @@ void* beeWorker(void* arg) {
                bee->id, entrance, hive->currentBeesInHive);
 
         if (pthread_mutex_unlock(&hive->hiveMutex) != 0) {
+            perror("[Pszczoła] pthread_mutex_unlock (hive exit)");
+            pthread_exit(NULL);
+        }
+
+        // Zwolnienie wejścia po wyjściu
+        hive->entranceInUse[entrance] = false;
+        printf("[Pszczoła %d] Zwalnia wejście/wyjście: %d po wyjściu.\n",
+               bee->id, entrance);
+
+        if (pthread_mutex_unlock(&hive->entranceMutex[entrance]) != 0) {
             perror("[Pszczoła] pthread_mutex_unlock (exit)");
             pthread_exit(NULL);
         }

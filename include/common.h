@@ -29,8 +29,8 @@ typedef struct {
     int workersBeeCount;     
     bool entranceInUse[2];  // Czy dane wejście (0/1) jest w danym momencie używane
 
-    pthread_mutex_t hiveMutex; // Mutex do synchronizacji dostępu do powyższych pól
-
+    pthread_mutex_t hiveMutex;// Mutex do synchronizacji dostępu do powyższych pól
+    pthread_mutex_t entranceMutex[2]; // Mutexy dla każdego wejścia
     int beesAlive;         // Liczba żywych pszczół w całym roju (uwzględniając narodzone)
 } HiveData;
 

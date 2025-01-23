@@ -38,6 +38,7 @@ int main(int argc, char* argv[]) {
     // Inicjalizacja danych ula
     HiveData hive;
     initHiveData(&hive, N, P);
+    
     hive.workersBeeCount = workerBeesCount;
 
     // Tworzenie wątku królowej
@@ -131,6 +132,13 @@ int main(int argc, char* argv[]) {
     if (pthread_mutex_destroy(&hive.hiveMutex) != 0) {
         perror("[MAIN] pthread_mutex_destroy");
     }
+    if (pthread_mutex_destroy(&hive.entranceMutex[0]) != 0) {
+    perror("[MAIN] pthread_mutex_destroy(entranceMutex[0])");
+    }
+    if (pthread_mutex_destroy(&hive.entranceMutex[1]) != 0) {
+    perror("[MAIN] pthread_mutex_destroy(entranceMutex[1])");
+    }
+
 
     printf("[MAIN] Koniec symulacji. (Praktycznie nigdy tu nie dojdzie)\n");
     return 0;
@@ -146,8 +154,19 @@ void initHiveData(HiveData* hive, int N, int P) {
     hive->entranceInUse[1] = false;
     hive->beesAlive = 0;
 
+    // Inicjalizacja mutexów
     if (pthread_mutex_init(&hive->hiveMutex, NULL) != 0) {
         perror("[MAIN] pthread_mutex_init(hiveMutex)");
+        exit(EXIT_FAILURE);
+    }
+
+    if (pthread_mutex_init(&hive->entranceMutex[0], NULL) != 0) {
+        perror("[MAIN] pthread_mutex_init(entranceMutex[0])");
+        exit(EXIT_FAILURE);
+    }
+
+    if (pthread_mutex_init(&hive->entranceMutex[1], NULL) != 0) {
+        perror("[MAIN] pthread_mutex_init(entranceMutex[1])");
         exit(EXIT_FAILURE);
     }
 }
