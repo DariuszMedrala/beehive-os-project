@@ -2,11 +2,7 @@
 #include "bee.h" // żeby móc tworzyć nowe wątki pszczół
 #include "common.h"
 
-#define RESET "\033[0m"
-#define RED "\033[31m"
-#define GREEN "\033[32m"
-#define YELLOW "\033[33m"
-#define BLUE "\033[34m"
+
 
 void* queenWorker(void* arg) {
     QueenArgs* queen = (QueenArgs*)arg;
@@ -30,9 +26,10 @@ void* queenWorker(void* arg) {
             coloredPrintf(GREEN, "~~~~~~~~~~~~\n"
                            "  /      \\ \n"
                            " /        \\ \n"
-                           " |  BZZZ  |\n"
+                           " |   🐝   |\n"
                            " \\        /\n"
                            "  \\______/\n");
+                           
 
             // Tworzymy faktyczne wątki pszczół
             for (int i = 0; i < queen->eggsCount; i++) {

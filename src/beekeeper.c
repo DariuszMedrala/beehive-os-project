@@ -65,10 +65,6 @@ void* beekeeperWorker(void* arg) {
         perror("[Pszczelarz] sigaction(SIGUSR2)");
     }
 
-    while (1) {
-        sleep(30);
-        printf("[Pszczelarz] Czekam na sygnały (co 5 sek)...\n");
-    }
 
     pthread_exit(NULL);
 }
