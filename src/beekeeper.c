@@ -1,5 +1,6 @@
 #include "beekeeper.h"
 #include <string.h>
+#include <signal.h>
 
 static BeekeeperArgs* gBeekeeperArgs = NULL;
 
@@ -12,8 +13,8 @@ void handleSignalAddFrames(int signum) {
         return;
     }
 
-    hive->maxCapacity = 2 * hive->N; // Zwiększamy do 2*N
-    printf("[Pszczelarz - sygnał] Dodano ramki. maxCapacity = %d\n", hive->maxCapacity);
+    hive->N = 2 * hive->N; // Zwiększamy do 2*N
+    printf("[Pszczelarz - sygnał] Dodano ramki. N = %d\n", hive->N);
 
     if (pthread_mutex_unlock(&hive->hiveMutex) != 0) {
         perror("[Pszczelarz - sygnał] pthread_mutex_unlock");
@@ -30,11 +31,9 @@ void handleSignalRemoveFrames(int signum) {
         return;
     }
 
-    hive->maxCapacity /= 2; // Zmniejszamy o 50%
-    if (hive->maxCapacity < hive->P) {
-        hive->maxCapacity = hive->P; // Nie może być mniej niż P
-    }
-    printf("[Pszczelarz - sygnał] Usunięto ramki. maxCapacity = %d\n", hive->maxCapacity);
+    hive->N /= 2; // Zmniejszamy o 50%
+    
+    printf("[Pszczelarz - sygnał] Usunięto ramki. N = %d\n", hive->N);
 
     if (pthread_mutex_unlock(&hive->hiveMutex) != 0) {
         perror("[Pszczelarz - sygnał] pthread_mutex_unlock");
@@ -60,7 +59,7 @@ void* beekeeperWorker(void* arg) {
     }
 
     while (1) {
-        sleep(5);
+        sleep(30);
         printf("[Pszczelarz] Czekam na sygnały (co 5 sek)...\n");
     }
 

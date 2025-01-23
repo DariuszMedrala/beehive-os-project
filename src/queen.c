@@ -7,7 +7,7 @@ void* queenWorker(void* arg) {
 
     // Zmienna statyczna lub globalna do generowania unikalnych ID nowo narodzonych pszczół
    
-    int nextBeeID = hive->workersBeeCount;
+    int nextBeeID = hive->N;
 
     while (1) {
         sleep(queen->T_k); // co T_k sekund
@@ -17,7 +17,7 @@ void* queenWorker(void* arg) {
             break; // lub pthread_exit(NULL)
         }
 
-        int wolneMiejsce = hive->maxCapacity - hive->currentBeesInHive;
+        int wolneMiejsce = hive->P - hive->currentBeesInHive;
         if (wolneMiejsce >= queen->eggsCount) {
             printf("[Królowa] Składa %d jaj.\n", queen->eggsCount);
             // Tworzymy faktyczne wątki pszczół

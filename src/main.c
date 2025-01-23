@@ -6,18 +6,18 @@
 void initHiveData(HiveData* hive, int N, int P);
 
 int main(int argc, char* argv[]) {
-    if (argc < 6) {
-        fprintf(stderr, "Użycie: %s <N> <P> <T_k> <eggsCount> <liczba_pszczol_robotnic>\n", argv[0]);
+    if (argc < 4) {
+        fprintf(stderr, "Poddaj argumenty: %s <N: początkowa liczba pszczół w roju.> <T_k: czas co jaki królowa składa jaja.> <eggsCount: jaką ilośc jaj ma złożyć.> \n", argv[0]);
         return 1;
     }
     int N = atoi(argv[1]);
-    int P = atoi(argv[2]);
-    int T_k = atoi(argv[3]);
-    int eggsCount = atoi(argv[4]);
-    int workerBeesCount = atoi(argv[5]);
+    int T_k = atoi(argv[2]);
+    int eggsCount = atoi(argv[3]);
 
-    if (N <= 0 || P <= 0 || P >= N/2 || T_k <= 0 || eggsCount <= 0 || workerBeesCount <= 0) {
-        fprintf(stderr, "Błędne wartości. Upewnij się, że P < N/2 i wszystko > 0.\n");
+    int P = (N/2) - 1;
+
+    if (N <= 0 || T_k <= 0 || eggsCount <= 0 ) {
+        fprintf(stderr, "Błędne wartości. Upewnij się, że wszystko > 0.\n");
         return 1;
     }
 
@@ -39,8 +39,6 @@ int main(int argc, char* argv[]) {
     HiveData hive;
     initHiveData(&hive, N, P);
     
-    hive.workersBeeCount = workerBeesCount;
-
     // Tworzenie wątku królowej
     pthread_t queenThread;
     QueenArgs* queenArgs = malloc(sizeof(QueenArgs));
@@ -75,7 +73,7 @@ int main(int argc, char* argv[]) {
     }
 
     // Tworzenie wątków pszczół robotnic (początkowych)
-    pthread_t* beeThreads = malloc(sizeof(pthread_t) * workerBeesCount);
+    pthread_t* beeThreads = malloc(sizeof(pthread_t) * N);
     if (!beeThreads) {
         perror("[MAIN] malloc beeThreads");
         free(queenArgs);
@@ -83,7 +81,7 @@ int main(int argc, char* argv[]) {
         return 1;
     }
 
-    for (int i = 0; i < workerBeesCount; i++) {
+    for (int i = 0; i < N; i++) {
         BeeArgs* b = malloc(sizeof(BeeArgs));
         if (!b) {
             perror("[MAIN] malloc BeeArgs");
@@ -116,7 +114,7 @@ int main(int argc, char* argv[]) {
     }
 
     // Czekamy, aż początkowe wątki pszczół skończą życie
-    for (int i = 0; i < workerBeesCount; i++) {
+    for (int i = 0; i < N; i++) {
         pthread_join(beeThreads[i], NULL);
     }
     free(beeThreads);
@@ -146,10 +144,8 @@ int main(int argc, char* argv[]) {
 
 void initHiveData(HiveData* hive, int N, int P) {
     hive->currentBeesInHive = 0;
-    hive->maxCapacity = P;
     hive->N = N;
     hive->P = P;
-    hive->workersBeeCount = 0;
     hive->entranceInUse[0] = false;
     hive->entranceInUse[1] = false;
     hive->beesAlive = 0;

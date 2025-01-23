@@ -22,7 +22,7 @@ void* beeWorker(void* arg) {
         }
 
         while (hive->entranceInUse[entrance] == true || 
-               hive->currentBeesInHive >= hive->maxCapacity) {
+               hive->currentBeesInHive >= (hive->P - 1)) {
             if (pthread_mutex_unlock(&hive->entranceMutex[entrance]) != 0) {
                 perror("[Pszczoła] pthread_mutex_unlock (waiting entrance)");
                 pthread_exit(NULL);
