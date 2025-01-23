@@ -39,6 +39,8 @@ int main(int argc, char* argv[]) {
     HiveData hive;
     initHiveData(&hive, N, P);
 
+    hive.currentBeesInHive = workerBeesCount;
+
     // Tworzenie wątku królowej
     pthread_t queenThread;
     QueenArgs* queenArgs = malloc(sizeof(QueenArgs));

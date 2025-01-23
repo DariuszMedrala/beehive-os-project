@@ -6,7 +6,8 @@ void* queenWorker(void* arg) {
     HiveData* hive = queen->hive;
 
     // Zmienna statyczna lub globalna do generowania unikalnych ID nowo narodzonych pszczół
-    static int nextBeeID = 1000; 
+   
+    int nextBeeID = 0 + hive->currentBeesInHive;
 
     while (1) {
         sleep(queen->T_k); // co T_k sekund
