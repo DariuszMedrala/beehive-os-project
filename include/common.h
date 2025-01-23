@@ -32,4 +32,6 @@ typedef struct {
     int beesAlive;         // Liczba żywych pszczół w całym roju (uwzględniając narodzone)
 } HiveData;
 
+void logMessage(const char* format, ...);
+
 #endif

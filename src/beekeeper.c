@@ -1,6 +1,7 @@
 #include "beekeeper.h"
 #include <string.h>
 #include <signal.h>
+#include <common.h>
 
 static BeekeeperArgs* gBeekeeperArgs = NULL;
 
@@ -10,14 +11,17 @@ void handleSignalAddFrames(int signum) {
 
     if (pthread_mutex_lock(&hive->hiveMutex) != 0) {
         perror("[Pszczelarz - sygnał] pthread_mutex_lock");
+        logMessage("[Pszczelarz - sygnał] Error locking hiveMutex");
         return;
     }
 
     hive->N = 2 * hive->N; // Zwiększamy do 2*N
     printf("[Pszczelarz - sygnał] Dodano ramki. N = %d\n", hive->N);
+    logMessage("[Pszczelarz - sygnał] SIGUSR1 received: Added frames. N = %d", hive->N);
 
     if (pthread_mutex_unlock(&hive->hiveMutex) != 0) {
         perror("[Pszczelarz - sygnał] pthread_mutex_unlock");
+        logMessage("[Pszczelarz - sygnał] Error unlocking hiveMutex");
         return;
     }
 }
@@ -28,15 +32,18 @@ void handleSignalRemoveFrames(int signum) {
 
     if (pthread_mutex_lock(&hive->hiveMutex) != 0) {
         perror("[Pszczelarz - sygnał] pthread_mutex_lock");
+        logMessage("[Pszczelarz - sygnał] Error locking hiveMutex");
         return;
     }
 
     hive->N /= 2; // Zmniejszamy o 50%
+    logMessage("[Pszczelarz - sygnał] SIGUSR2 received: Removed frames. N = %d", hive->N);
     
     printf("[Pszczelarz - sygnał] Usunięto ramki. N = %d\n", hive->N);
 
     if (pthread_mutex_unlock(&hive->hiveMutex) != 0) {
         perror("[Pszczelarz - sygnał] pthread_mutex_unlock");
+        logMessage("[Pszczelarz - sygnał] Error unlocking hiveMutex");
         return;
     }
 }

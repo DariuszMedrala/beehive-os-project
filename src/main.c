@@ -31,6 +31,8 @@ int main(int argc, char* argv[]) {
     if (write(logFile, startMsg, strlen(startMsg)) < 0) {
         perror("[MAIN] write(beehive.log)");
     }
+    logMessage("[MAIN] Program started with arguments: N=%s, T_k=%s, eggsCount=%s",
+               argv[1], argv[2], argv[3]);
     if (close(logFile) < 0) {
         perror("[MAIN] close(beehive.log)");
     }
