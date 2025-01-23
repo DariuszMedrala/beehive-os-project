@@ -4,6 +4,21 @@
 #include <time.h>
 #include <stdlib.h>
 
+#define RESET "\033[0m"
+#define RED "\033[31m"
+#define GREEN "\033[32m"
+#define YELLOW "\033[33m"
+#define BLUE "\033[34m"
+
+void coloredPrintf(const char* color, const char* format, ...) {
+    va_list args;
+    va_start(args, format);
+    printf("%s", color);
+    vprintf(format, args);
+    printf("%s", RESET);
+    va_end(args);
+}
+
 void logMessage(const char* format, ...) {
     FILE* logFile = fopen("beehive.log", "a");
     if (!logFile) {

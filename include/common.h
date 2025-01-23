@@ -34,4 +34,6 @@ typedef struct {
 
 void logMessage(const char* format, ...);
 
+void coloredPrintf(const char* color, const char* format, ...);
+
 #endif
