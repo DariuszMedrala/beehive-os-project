@@ -9,6 +9,7 @@ typedef struct {
     int maxVisits;  // Po ilu wizytach pszczoła umiera
     int T_inHive;   // Czas przebywania pszczoły w ulu (sekundy)
     HiveData* hive;
+    bool startInHive;  // Czy pszczoła zaczyna życie w ulu
 } BeeArgs;
 
 void* beeWorker(void* arg);

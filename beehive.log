@@ -1,4 +1,3 @@
 Beehive simulation started.
-[23-01-2025 16:35:11] [MAIN] Program started with arguments: N=100, T_k=10, eggsCount=2
-[23-01-2025 16:36:28] [Pszczelarz - sygnał] SIGUSR1 received: Added frames. N = 200
-[23-01-2025 16:36:28] [Pszczelarz - sygnał] SIGUSR2 received: Removed frames. N = 100
+[23-01-2025 18:33:36] [MAIN] Program started with arguments: N=100, T_k=20, eggsCount=3
+[23-01-2025 18:34:10] [Pszczelarz - sygnał] SIGUSR1 received: Added frames. N = 200

@@ -24,6 +24,7 @@ void* queenWorker(void* arg) {
             for (int i = 0; i < queen->eggsCount; i++) {
                 // Zwiększamy beesAlive
                 hive->beesAlive++;
+                hive->currentBeesInHive++;
 
                 // Tworzymy nową strukturę BeeArgs dla każdej nowej pszczoły
                 BeeArgs* newBee = (BeeArgs*)malloc(sizeof(BeeArgs));
@@ -37,6 +38,8 @@ void* queenWorker(void* arg) {
                 newBee->maxVisits = 3;   // nowo narodzona pszczoła też żyje do 3 wizyt
                 newBee->T_inHive = 60;    // i spędza 2 sek w ulu
                 newBee->hive = hive;
+                newBee->startInHive = true;
+                
 
                 // Tworzymy wątek nowej pszczoły
                 pthread_t newBeeThread;
