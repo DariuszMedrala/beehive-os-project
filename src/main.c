@@ -38,8 +38,7 @@ int main(int argc, char* argv[]) {
     // Inicjalizacja danych ula
     HiveData hive;
     initHiveData(&hive, N, P);
-
-    hive.currentBeesInHive = workerBeesCount;
+    hive.workersBeeCount = workerBeesCount;
 
     // Tworzenie wątku królowej
     pthread_t queenThread;
@@ -142,6 +141,7 @@ void initHiveData(HiveData* hive, int N, int P) {
     hive->maxCapacity = P;
     hive->N = N;
     hive->P = P;
+    hive->workersBeeCount = 0;
     hive->entranceInUse[0] = false;
     hive->entranceInUse[1] = false;
     hive->beesAlive = 0;

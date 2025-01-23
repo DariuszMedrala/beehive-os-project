@@ -7,7 +7,7 @@ void* queenWorker(void* arg) {
 
     // Zmienna statyczna lub globalna do generowania unikalnych ID nowo narodzonych pszczół
    
-    int nextBeeID = 0 + hive->currentBeesInHive;
+    int nextBeeID = hive->workersBeeCount;
 
     while (1) {
         sleep(queen->T_k); // co T_k sekund
@@ -35,7 +35,7 @@ void* queenWorker(void* arg) {
                 newBee->id = nextBeeID++;
                 newBee->visits = 0;
                 newBee->maxVisits = 3;   // nowo narodzona pszczoła też żyje do 3 wizyt
-                newBee->T_inHive = 2;    // i spędza 2 sek w ulu
+                newBee->T_inHive = 60;    // i spędza 2 sek w ulu
                 newBee->hive = hive;
 
                 // Tworzymy wątek nowej pszczoły

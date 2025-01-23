@@ -25,7 +25,8 @@ typedef struct {
     int currentBeesInHive;  // Aktualna liczba pszczół w ulu (w danej chwili)
     int maxCapacity;        // Aktualna pojemność ula (ile pszczół może być w środku naraz)
     int N;                  // Początkowa liczba pszczół (rozmiar roju)
-    int P;                  // Początkowy limit pszczół w ulu
+    int P;                   // Początkowy limit pszczół w ulu
+    int workersBeeCount;     
     bool entranceInUse[2];  // Czy dane wejście (0/1) jest w danym momencie używane
 
     pthread_mutex_t hiveMutex; // Mutex do synchronizacji dostępu do powyższych pól

@@ -34,13 +34,17 @@ void* beeWorker(void* arg) {
         }
 
         // Zajmujemy wejście
+        printf("[Pszczoła %d] Zajmuje wejście/wyjście: %d.\n",
+               bee->id, entrance);
         hive->entranceInUse[entrance] = true;
         hive->currentBeesInHive++;
-        printf("[Pszczoła %d] Wchodzi przez wejście %d. (W ulu: %d)\n",
+        printf("[Pszczoła %d] Wchodzi przez wejście/wyjście %d. (W ulu: %d)\n",
                bee->id, entrance, hive->currentBeesInHive);
 
         // Zwolnienie wejścia natychmiast po wejściu
         hive->entranceInUse[entrance] = false;
+        printf("[Pszczoła %d] Zwalnia wejście/wyjście: %d.\n",
+               bee->id, entrance);
 
         if (pthread_mutex_unlock(&hive->hiveMutex) != 0) {
             perror("[Pszczoła] pthread_mutex_unlock (enter)");
