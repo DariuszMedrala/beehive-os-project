@@ -50,7 +50,6 @@ extern LogConfig logConfig;
 typedef struct {
     int currentBeesInHive;  // Aktualna liczba pszczół w ulu
     int N;                  // Początkowa liczba pszczół (rozmiar roju)
-    int P;                  // Limit pszczół w ulu
     int beesAlive;          // Liczba żywych pszczół w całym roju
 } HiveData;
 

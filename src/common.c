@@ -12,6 +12,10 @@ LogConfig logConfig = {
     .fileLogLevel = LOG_DEBUG      // Wszystkie poziomy logowania w pliku
 };
 
+int calculateP(int N) {
+    return (N / 2) - 1;
+}
+
 void logMessage(LogLevel level, const char* format, ...) {
     va_list args;
     va_start(args, format);

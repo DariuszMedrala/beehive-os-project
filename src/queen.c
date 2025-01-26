@@ -27,7 +27,7 @@ void queenWorker(QueenArgs* arg) {
             handleError("[Królowa] sem_wait (hiveSem)", -1, queen->semid);
         }
 
-        int wolneMiejsce = queen->hive->P - queen->hive->currentBeesInHive;
+        int wolneMiejsce = calculateP(queen->hive->N) - queen->hive->currentBeesInHive;
         if (wolneMiejsce >= queen->eggsCount && queen->eggsCount < (queen->hive->N - queen->hive->beesAlive)) {
             logMessage(LOG_INFO, "[Królowa] Składa %d jaja.", queen->eggsCount);
 

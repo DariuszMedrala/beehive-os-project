@@ -72,7 +72,7 @@ void beeWorker(BeeArgs* arg) {
             handleError("[Pszczoła] sem_wait (hiveSem)", -1, bee->semid);
         }
 
-        while (bee->hive->currentBeesInHive >= bee->hive->P) {
+        while (bee->hive->currentBeesInHive >= calculateP(bee->hive->N)) {
             if (sem_post(&bee->semaphores->hiveSem) == -1) {
                 handleError("[Pszczoła] sem_post (hiveSem)", -1, bee->semid);
             }

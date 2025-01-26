@@ -9,7 +9,7 @@
 #include <signal.h>
 #include <stdlib.h>
 
-void initHiveData(HiveData* hive, int N, int P);
+void initHiveData(HiveData* hive, int N);
 
 int main(int argc, char* argv[]) {
     if (argc < 4) {
@@ -19,8 +19,6 @@ int main(int argc, char* argv[]) {
     int N = atoi(argv[1]);
     int T_k = atoi(argv[2]);
     int eggsCount = atoi(argv[3]);
-
-    int P = (N / 2) - 1;
 
     if (N <= 0 || T_k <= 0 || eggsCount <= 0) {
         fprintf(stderr, "Błędne wartości. Upewnij się, że wszystko > 0.\n");
@@ -38,7 +36,7 @@ int main(int argc, char* argv[]) {
         handleError("[MAIN] shmat (HiveData)", shmid, -1);
     }
 
-    initHiveData(hive, N, P);
+    initHiveData(hive, N);
 
     // Tworzenie pamięci współdzielonej dla semaforów
     int semid = shmget(IPC_PRIVATE, sizeof(HiveSemaphores), IPC_CREAT | 0666);
@@ -123,9 +121,8 @@ int main(int argc, char* argv[]) {
     return 0;
 }
 
-void initHiveData(HiveData* hive, int N, int P) {
+void initHiveData(HiveData* hive, int N) {
     hive->currentBeesInHive = 0;
     hive->N = N;
-    hive->P = P;
     hive->beesAlive = 0;
 }
