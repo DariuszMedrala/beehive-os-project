@@ -85,7 +85,7 @@ int main(int argc, char* argv[]) {
     for (int i = 0; i < N; i++) {
         pid_t beePid = fork();
         if (beePid == 0) {
-            BeeArgs beeArgs = {i, 0, 3, 60, hive, false, semid};
+            BeeArgs beeArgs = {i, 0, 3, 10, hive, false, semid};
             beeWorker(&beeArgs);
             exit(EXIT_SUCCESS);
         } else if (beePid < 0) {

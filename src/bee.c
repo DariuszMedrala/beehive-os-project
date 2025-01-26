@@ -8,6 +8,13 @@ void beeWorker(BeeArgs* arg) {
     BeeArgs* bee = arg;
     HiveData* hive = bee->hive;
 
+    unsigned int ziarno = time(NULL) + getpid();
+    if (ziarno == 0) {
+        handleError("[Pszczoła] rand_r seed initialization", -1, bee->semid);
+    }
+
+    double waitTime = 0.5 + (rand_r(&ziarno) % 501) / 1000.0;
+
     HiveSemaphores* semaphores = (HiveSemaphores*)attachSharedMemory(bee->semid);
     if (semaphores == NULL) {
         handleError("[Pszczoła] attachSharedMemory", -1, bee->semid);
@@ -45,9 +52,17 @@ void beeWorker(BeeArgs* arg) {
     while (bee->visits < bee->maxVisits) {
         int entrance = rand_r(&seed) % 2;
 
-        if (sem_wait(&semaphores->entranceSem[entrance]) == -1) {
-            handleError("[Pszczoła] sem_wait (entranceSem)", -1, bee->semid);
+        // Sprawdź, czy wyjście jest wolne
+        if (sem_trywait(&semaphores->entranceSem[entrance]) == -1) {
+            // Jeśli wyjście jest zajęte, wybierz drugie wyjście
+            entrance = 1 - entrance;
+            if (sem_trywait(&semaphores->entranceSem[entrance]) == -1) {
+                // Jeśli oba wyjścia są zajęte, poczekaj chwilę i spróbuj ponownie
+                sleep(1);
+                continue;
+            }
         }
+
         if (sem_wait(&semaphores->hiveSem) == -1) {
             handleError("[Pszczoła] sem_wait (hiveSem)", -1, bee->semid);
         }
@@ -59,7 +74,7 @@ void beeWorker(BeeArgs* arg) {
             if (sem_post(&semaphores->entranceSem[entrance]) == -1) {
                 handleError("[Pszczoła] sem_post (entranceSem)", -1, bee->semid);
             }
-            sleep(1);
+
             if (sem_wait(&semaphores->entranceSem[entrance]) == -1) {
                 handleError("[Pszczoła] sem_wait (entranceSem)", -1, bee->semid);
             }
@@ -68,6 +83,7 @@ void beeWorker(BeeArgs* arg) {
             }
         }
 
+        usleep(waitTime * 1000000);
         hive->currentBeesInHive++;
         logMessage(LOG_INFO, "[Pszczoła %d] Wchodzi przez wejście/wyjście %d. (W ulu: %d)", bee->id, entrance, hive->currentBeesInHive);
 
@@ -80,6 +96,7 @@ void beeWorker(BeeArgs* arg) {
 
         int timeInHive = (rand_r(&seed) % (bee->T_inHive / 2 + 1)) + (bee->T_inHive);
         unsigned int remainingSleep = sleep(timeInHive);
+
         if (remainingSleep > 0) {
             handleError("[Pszczoła] sleep interrupted", -1, bee->semid);
         }
@@ -91,6 +108,7 @@ void beeWorker(BeeArgs* arg) {
             handleError("[Pszczoła] sem_wait (hiveSem)", -1, bee->semid);
         }
 
+        usleep(waitTime * 1000000);
         hive->currentBeesInHive--;
         logMessage(LOG_INFO, "[Pszczoła %d] Wychodzi przez wejście %d. (W ulu: %d)", bee->id, entrance, hive->currentBeesInHive);
 
@@ -120,4 +138,4 @@ void beeWorker(BeeArgs* arg) {
 
     detachSharedMemory(semaphores);
     exit(EXIT_SUCCESS);
-}
+} 
