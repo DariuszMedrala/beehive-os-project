@@ -22,30 +22,8 @@ HiveData* getHiveDataAndSemaphores(HiveSemaphores** semaphores) {
     return gBeekeeperArgs->hive;
 }
 
-void cleanup(int signum) {
-    (void)signum; // Oznacz jako nieużywany
-
-    HiveSemaphores* semaphores;
-    HiveData* hive = getHiveDataAndSemaphores(&semaphores);
-    if (hive == NULL) return;
-
-    // Zwolnij pamięć współdzieloną dla HiveData
-    if (shmctl(gBeekeeperArgs->shmid, IPC_RMID, NULL) == -1) {
-        handleError("[Pszczelarz] shmctl IPC_RMID (HiveData)", gBeekeeperArgs->shmid, gBeekeeperArgs->semid);
-    } 
-
-    // Zwolnij pamięć współdzieloną dla semaforów
-    if (shmctl(gBeekeeperArgs->semid, IPC_RMID, NULL) == -1) {
-        handleError("[Pszczelarz] shmctl IPC_RMID (semaforów)", gBeekeeperArgs->shmid, gBeekeeperArgs->semid);
-    } 
-
-    // Odłącz pamięć współdzieloną
-    detachSharedMemory(semaphores);
-    exit(EXIT_SUCCESS);
-}
-
 void handleSignalAddFrames(int signum) {
-    (void)signum; // Oznacz jako nieużywany
+    (void)signum;
 
     HiveSemaphores* semaphores;
     HiveData* hive = getHiveDataAndSemaphores(&semaphores);
@@ -56,18 +34,17 @@ void handleSignalAddFrames(int signum) {
     }
 
     hive->N = 2 * hive->N;
-    printf("[Pszczelarz - sygnał] Dodano ramki. N = %d\n", hive->N);
+    logMessage(LOG_INFO, "[Pszczelarz - sygnał] Dodano ramki. N = %d", hive->N);
 
     if (sem_post(&semaphores->hiveSem) == -1) {
         handleError("[Pszczelarz] sem_post (hiveSem)", gBeekeeperArgs->shmid, gBeekeeperArgs->semid);
     }
 
-    // Odłącz pamięć współdzieloną
     detachSharedMemory(semaphores);
 }
 
 void handleSignalRemoveFrames(int signum) {
-    (void)signum; // Oznacz jako nieużywany
+    (void)signum;
 
     HiveSemaphores* semaphores;
     HiveData* hive = getHiveDataAndSemaphores(&semaphores);
@@ -78,14 +55,32 @@ void handleSignalRemoveFrames(int signum) {
     }
 
     hive->N /= 2;
-    printf("[Pszczelarz - sygnał] Usunięto ramki. N = %d\n", hive->N);
+    logMessage(LOG_INFO, "[Pszczelarz - sygnał] Usunięto ramki. N = %d", hive->N);
 
     if (sem_post(&semaphores->hiveSem) == -1) {
         handleError("[Pszczelarz] sem_post (hiveSem)", gBeekeeperArgs->shmid, gBeekeeperArgs->semid);
     }
 
-    // Odłącz pamięć współdzieloną
     detachSharedMemory(semaphores);
+}
+
+void cleanup(int signum) {
+    (void)signum;
+
+    HiveSemaphores* semaphores;
+    HiveData* hive = getHiveDataAndSemaphores(&semaphores);
+    if (hive == NULL) return;
+
+    if (shmctl(gBeekeeperArgs->shmid, IPC_RMID, NULL) == -1) {
+        handleError("[Pszczelarz] shmctl IPC_RMID (HiveData)", gBeekeeperArgs->shmid, gBeekeeperArgs->semid);
+    }
+
+    if (shmctl(gBeekeeperArgs->semid, IPC_RMID, NULL) == -1) {
+        handleError("[Pszczelarz] shmctl IPC_RMID (semaforów)", gBeekeeperArgs->shmid, gBeekeeperArgs->semid);
+    }
+
+    detachSharedMemory(semaphores);
+    exit(EXIT_SUCCESS);
 }
 
 void beekeeperWorker(BeekeeperArgs* arg) {

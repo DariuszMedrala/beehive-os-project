@@ -119,10 +119,9 @@ int main(int argc, char* argv[]) {
         handleError("[MAIN] shmctl IPC_RMID (semaforów)", shmid, semid);
     }
 
-    printf("[MAIN] Koniec symulacji.\n");
+    logMessage(LOG_INFO, "[MAIN] Koniec symulacji.");
     return 0;
 }
-
 void initHiveData(HiveData* hive, int N, int P) {
     hive->currentBeesInHive = 0;
     hive->N = N;

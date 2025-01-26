@@ -8,7 +8,6 @@ void beeWorker(BeeArgs* arg) {
     BeeArgs* bee = arg;
     HiveData* hive = bee->hive;
 
-    // Użyj funkcji pomocniczej do dołączenia pamięci współdzielonej dla semaforów
     HiveSemaphores* semaphores = (HiveSemaphores*)attachSharedMemory(bee->semid);
     if (semaphores == NULL) {
         handleError("[Pszczoła] attachSharedMemory", -1, bee->semid);
@@ -21,7 +20,7 @@ void beeWorker(BeeArgs* arg) {
 
     if (bee->startInHive) {
         int entrance = rand_r(&seed) % 2;
-        printf("[Pszczoła %d] Rozpoczyna życie w ulu.\n", bee->id);
+        logMessage(LOG_INFO, "[Pszczoła %d] Rozpoczyna życie w ulu.", bee->id);
 
         if (sem_wait(&semaphores->entranceSem[entrance]) == -1) {
             handleError("[Pszczoła] sem_wait (entranceSem)", -1, bee->semid);
@@ -31,7 +30,7 @@ void beeWorker(BeeArgs* arg) {
         }
 
         hive->currentBeesInHive--;
-        printf("[Pszczoła %d] Wychodzi przez wejście %d. (W ulu: %d)\n", bee->id, entrance, hive->currentBeesInHive);
+        logMessage(LOG_INFO, "[Pszczoła %d] Wychodzi przez wejście %d. (W ulu: %d)", bee->id, entrance, hive->currentBeesInHive);
 
         if (sem_post(&semaphores->hiveSem) == -1) {
             handleError("[Pszczoła] sem_post (hiveSem)", -1, bee->semid);
@@ -70,7 +69,7 @@ void beeWorker(BeeArgs* arg) {
         }
 
         hive->currentBeesInHive++;
-        printf("[Pszczoła %d] Wchodzi przez wejście/wyjście %d. (W ulu: %d)\n", bee->id, entrance, hive->currentBeesInHive);
+        logMessage(LOG_INFO, "[Pszczoła %d] Wchodzi przez wejście/wyjście %d. (W ulu: %d)", bee->id, entrance, hive->currentBeesInHive);
 
         if (sem_post(&semaphores->hiveSem) == -1) {
             handleError("[Pszczoła] sem_post (hiveSem)", -1, bee->semid);
@@ -93,7 +92,7 @@ void beeWorker(BeeArgs* arg) {
         }
 
         hive->currentBeesInHive--;
-        printf("[Pszczoła %d] Wychodzi przez wejście %d. (W ulu: %d)\n", bee->id, entrance, hive->currentBeesInHive);
+        logMessage(LOG_INFO, "[Pszczoła %d] Wychodzi przez wejście %d. (W ulu: %d)", bee->id, entrance, hive->currentBeesInHive);
 
         if (sem_post(&semaphores->hiveSem) == -1) {
             handleError("[Pszczoła] sem_post (hiveSem)", -1, bee->semid);
@@ -114,12 +113,11 @@ void beeWorker(BeeArgs* arg) {
         handleError("[Pszczoła] sem_wait (hiveSem)", -1, bee->semid);
     }
     hive->beesAlive--;
-    printf("[Pszczoła %d] Umiera. (Pozostało pszczół: %d)\n", bee->id, hive->beesAlive);
+    logMessage(LOG_INFO, "[Pszczoła %d] Umiera. (Pozostało pszczół: %d)", bee->id, hive->beesAlive);
     if (sem_post(&semaphores->hiveSem) == -1) {
         handleError("[Pszczoła] sem_post (hiveSem)", -1, bee->semid);
     }
 
-    // Odłącz pamięć współdzieloną
     detachSharedMemory(semaphores);
     exit(EXIT_SUCCESS);
 }

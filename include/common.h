@@ -18,6 +18,7 @@
 #include <fcntl.h>
 #include <time.h>
 #include <semaphore.h>
+#include <stdarg.h>
 
 #define RESET "\033[0m"
 #define RED "\033[31m"
@@ -26,6 +27,24 @@
 #define BLUE "\033[34m"
 
 #define MAX_BEES 1000
+
+// Poziomy logowania
+typedef enum {
+    LOG_DEBUG,
+    LOG_INFO,
+    LOG_WARNING,
+    LOG_ERROR
+} LogLevel;
+
+// Konfiguracja logowania
+typedef struct {
+    bool logToConsole;
+    bool logToFile;
+    LogLevel consoleLogLevel;
+    LogLevel fileLogLevel;
+} LogConfig;
+
+extern LogConfig logConfig;
 
 // Struktura przechowująca globalny stan ula
 typedef struct {
@@ -46,8 +65,7 @@ extern int shmid;  // Identyfikator pamięci współdzielonej dla HiveData
 extern int semid;  // Identyfikator pamięci współdzielonej dla semaforów
 
 // Funkcje
-void logMessage(const char* format, ...);
-void coloredPrintf(const char* color, const char* format, ...);
+void logMessage(LogLevel level, const char* format, ...);
 
 // Funkcje pomocnicze do zarządzania pamięcią współdzieloną
 void* attachSharedMemory(int shmid);

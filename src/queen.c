@@ -10,7 +10,6 @@ void queenWorker(QueenArgs* arg) {
     QueenArgs* queen = arg;
     HiveData* hive = queen->hive;
 
-    // Użyj funkcji pomocniczej do dołączenia pamięci współdzielonej dla semaforów
     HiveSemaphores* semaphores = (HiveSemaphores*)attachSharedMemory(queen->semid);
     if (semaphores == NULL) {
         handleError("[Królowa] attachSharedMemory", -1, queen->semid);
@@ -27,7 +26,7 @@ void queenWorker(QueenArgs* arg) {
 
         int wolneMiejsce = hive->P - hive->currentBeesInHive;
         if (wolneMiejsce >= queen->eggsCount && queen->eggsCount < (hive->N - hive->beesAlive)) {
-            coloredPrintf(GREEN, "[Królowa] Składa %d jaja.\n", queen->eggsCount);
+            logMessage(LOG_INFO, "[Królowa] Składa %d jaja.", queen->eggsCount);
 
             for (int i = 0; i < queen->eggsCount; i++) {
                 hive->beesAlive++;
@@ -43,9 +42,9 @@ void queenWorker(QueenArgs* arg) {
                     handleError("[Królowa] fork", -1, queen->semid);
                 }
             }
-            printf("[Królowa] Teraz żywych pszczół: %d\n", hive->beesAlive);
+            logMessage(LOG_INFO, "[Królowa] Teraz żywych pszczół: %d", hive->beesAlive);
         } else {
-            printf("[Królowa] Za mało miejsca w ulu (wolne: %d) lub brak miejsca w kolonii.\n", wolneMiejsce);
+            logMessage(LOG_WARNING, "[Królowa] Za mało miejsca w ulu (wolne: %d) lub brak miejsca w kolonii.", wolneMiejsce);
         }
 
         if (sem_post(&semaphores->hiveSem) == -1) {
@@ -53,7 +52,6 @@ void queenWorker(QueenArgs* arg) {
         }
     }
 
-    // Odłącz pamięć współdzieloną
     detachSharedMemory(semaphores);
     exit(EXIT_SUCCESS);
 }
