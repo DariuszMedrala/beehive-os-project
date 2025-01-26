@@ -13,7 +13,7 @@ void queenWorker(QueenArgs* arg) {
     // Użyj funkcji pomocniczej do dołączenia pamięci współdzielonej dla semaforów
     HiveSemaphores* semaphores = (HiveSemaphores*)attachSharedMemory(queen->semid);
     if (semaphores == NULL) {
-        exit(EXIT_FAILURE);
+        handleError("[Królowa] attachSharedMemory", -1, queen->semid);
     }
 
     int nextBeeID = hive->N;
@@ -21,7 +21,9 @@ void queenWorker(QueenArgs* arg) {
     while (1) {
         sleep(queen->T_k);
 
-        sem_wait(&semaphores->hiveSem);
+        if (sem_wait(&semaphores->hiveSem) == -1) {
+            handleError("[Królowa] sem_wait (hiveSem)", -1, queen->semid);
+        }
 
         int wolneMiejsce = hive->P - hive->currentBeesInHive;
         if (wolneMiejsce >= queen->eggsCount && queen->eggsCount < (hive->N - hive->beesAlive)) {
@@ -31,15 +33,14 @@ void queenWorker(QueenArgs* arg) {
                 hive->beesAlive++;
                 hive->currentBeesInHive++;
 
-                BeeArgs beeArgs = {nextBeeID++, 0, 3, 60, hive, false, queen->semid}; // Przekaż semid do pszczoły
+                BeeArgs beeArgs = {nextBeeID++, 0, 3, 60, hive, false, queen->semid};
 
                 pid_t beePid = fork();
                 if (beePid == 0) {
                     beeWorker(&beeArgs);
                     exit(EXIT_SUCCESS);
                 } else if (beePid < 0) {
-                    perror("[Królowa] fork");
-                    hive->beesAlive--;
+                    handleError("[Królowa] fork", -1, queen->semid);
                 }
             }
             printf("[Królowa] Teraz żywych pszczół: %d\n", hive->beesAlive);
@@ -47,7 +48,9 @@ void queenWorker(QueenArgs* arg) {
             printf("[Królowa] Za mało miejsca w ulu (wolne: %d) lub brak miejsca w kolonii.\n", wolneMiejsce);
         }
 
-        sem_post(&semaphores->hiveSem);
+        if (sem_post(&semaphores->hiveSem) == -1) {
+            handleError("[Królowa] sem_post (hiveSem)", -1, queen->semid);
+        }
     }
 
     // Odłącz pamięć współdzieloną

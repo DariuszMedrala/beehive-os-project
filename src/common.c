@@ -19,12 +19,15 @@ void coloredPrintf(const char* color, const char* format, ...) {
 void logMessage(const char* format, ...) {
     FILE* logFile = fopen("beehive.log", "a");
     if (!logFile) {
-        perror("[LOGGER] Failed to open log file");
+        handleError("[LOGGER] Failed to open log file", -1, -1);
         return;
     }
 
     // Dodanie znacznika czasu
     time_t now = time(NULL);
+    if (now == -1) {
+        handleError("[LOGGER] time", -1, -1);
+    }
     struct tm* t = localtime(&now);
     fprintf(logFile, "[%02d-%02d-%04d %02d:%02d:%02d] ",
             t->tm_mday, t->tm_mon + 1, t->tm_year + 1900,
@@ -44,8 +47,7 @@ void logMessage(const char* format, ...) {
 void* attachSharedMemory(int shmid) {
     void* sharedMemory = shmat(shmid, NULL, 0);
     if (sharedMemory == (void*)-1) {
-        perror("shmat");
-        return NULL;
+        handleError("shmat", shmid, -1);
     }
     return sharedMemory;
 }
@@ -53,34 +55,27 @@ void* attachSharedMemory(int shmid) {
 // Funkcja odłączająca pamięć współdzieloną
 void detachSharedMemory(void* sharedMemory) {
     if (shmdt(sharedMemory) == -1) {
-        perror("shmdt");
+        handleError("shmdt", -1, -1);
     }
 }
 
-// Funkcja inicjalizująca semafory
-void initSemaphores(HiveSemaphores* semaphores) {
-    if (sem_init(&semaphores->hiveSem, 1, 1) == -1) {
-        perror("sem_init (hiveSem)");
-        exit(EXIT_FAILURE);
-    }
+// Funkcja do obsługi błędów
+void handleError(const char* message, int shmid, int semid) {
+    perror(message);
 
-    for (int i = 0; i < 2; i++) {
-        if (sem_init(&semaphores->entranceSem[i], 1, 1) == -1) {
-            perror("sem_init (entranceSem)");
-            exit(EXIT_FAILURE);
+    // Zwolnij pamięć współdzieloną, jeśli shmid jest prawidłowy
+    if (shmid != -1) {
+        if (shmctl(shmid, IPC_RMID, NULL) == -1) {
+            perror("shmctl IPC_RMID (HiveData)");
         }
     }
-}
 
-// Funkcja niszcząca semafory
-void destroySemaphores(HiveSemaphores* semaphores) {
-    if (sem_destroy(&semaphores->hiveSem) == -1) {
-        perror("sem_destroy (hiveSem)");
-    }
-
-    for (int i = 0; i < 2; i++) {
-        if (sem_destroy(&semaphores->entranceSem[i]) == -1) {
-            perror("sem_destroy (entranceSem)");
+    // Zwolnij pamięć współdzieloną dla semaforów, jeśli semid jest prawidłowy
+    if (semid != -1) {
+        if (shmctl(semid, IPC_RMID, NULL) == -1) {
+            perror("shmctl IPC_RMID (semaforów)");
         }
     }
+
+    exit(EXIT_FAILURE);
 }

@@ -11,25 +11,34 @@ void beeWorker(BeeArgs* arg) {
     // Użyj funkcji pomocniczej do dołączenia pamięci współdzielonej dla semaforów
     HiveSemaphores* semaphores = (HiveSemaphores*)attachSharedMemory(bee->semid);
     if (semaphores == NULL) {
-        exit(EXIT_FAILURE);
+        handleError("[Pszczoła] attachSharedMemory", -1, bee->semid);
     }
 
     unsigned int seed = time(NULL) + bee->id;
+    if (seed == 0) {
+        handleError("[Pszczoła] rand_r seed initialization", -1, bee->semid);
+    }
 
     if (bee->startInHive) {
         int entrance = rand_r(&seed) % 2;
         printf("[Pszczoła %d] Rozpoczyna życie w ulu.\n", bee->id);
 
-        // Zajmij semafor wejścia/wyjścia
-        sem_wait(&semaphores->entranceSem[entrance]);
-        sem_wait(&semaphores->hiveSem);
+        if (sem_wait(&semaphores->entranceSem[entrance]) == -1) {
+            handleError("[Pszczoła] sem_wait (entranceSem)", -1, bee->semid);
+        }
+        if (sem_wait(&semaphores->hiveSem) == -1) {
+            handleError("[Pszczoła] sem_wait (hiveSem)", -1, bee->semid);
+        }
 
         hive->currentBeesInHive--;
         printf("[Pszczoła %d] Wychodzi przez wejście %d. (W ulu: %d)\n", bee->id, entrance, hive->currentBeesInHive);
 
-        sem_post(&semaphores->hiveSem);
-        // Zwolnij semafor wejścia/wyjścia
-        sem_post(&semaphores->entranceSem[entrance]);
+        if (sem_post(&semaphores->hiveSem) == -1) {
+            handleError("[Pszczoła] sem_post (hiveSem)", -1, bee->semid);
+        }
+        if (sem_post(&semaphores->entranceSem[entrance]) == -1) {
+            handleError("[Pszczoła] sem_post (entranceSem)", -1, bee->semid);
+        }
 
         bee->startInHive = false;
     }
@@ -37,48 +46,78 @@ void beeWorker(BeeArgs* arg) {
     while (bee->visits < bee->maxVisits) {
         int entrance = rand_r(&seed) % 2;
 
-        // Zajmij semafor wejścia/wyjścia
-        sem_wait(&semaphores->entranceSem[entrance]);
-        // Sprawdź, czy w ulu jest miejsce
-        sem_wait(&semaphores->hiveSem);
+        if (sem_wait(&semaphores->entranceSem[entrance]) == -1) {
+            handleError("[Pszczoła] sem_wait (entranceSem)", -1, bee->semid);
+        }
+        if (sem_wait(&semaphores->hiveSem) == -1) {
+            handleError("[Pszczoła] sem_wait (hiveSem)", -1, bee->semid);
+        }
+
         while (hive->currentBeesInHive >= hive->P) {
-            sem_post(&semaphores->hiveSem); // Zwolnij semafor hiveSem, aby inne procesy mogły działać
-            sem_post(&semaphores->entranceSem[entrance]); // Zwolnij semafor wejścia
-            sleep(1); // Poczekaj chwilę
-            sem_wait(&semaphores->entranceSem[entrance]); // Ponownie zajmij semafor wejścia
-            sem_wait(&semaphores->hiveSem); // Ponownie zajmij semafor hiveSem
+            if (sem_post(&semaphores->hiveSem) == -1) {
+                handleError("[Pszczoła] sem_post (hiveSem)", -1, bee->semid);
+            }
+            if (sem_post(&semaphores->entranceSem[entrance]) == -1) {
+                handleError("[Pszczoła] sem_post (entranceSem)", -1, bee->semid);
+            }
+            sleep(1);
+            if (sem_wait(&semaphores->entranceSem[entrance]) == -1) {
+                handleError("[Pszczoła] sem_wait (entranceSem)", -1, bee->semid);
+            }
+            if (sem_wait(&semaphores->hiveSem) == -1) {
+                handleError("[Pszczoła] sem_wait (hiveSem)", -1, bee->semid);
+            }
         }
 
         hive->currentBeesInHive++;
         printf("[Pszczoła %d] Wchodzi przez wejście/wyjście %d. (W ulu: %d)\n", bee->id, entrance, hive->currentBeesInHive);
 
-        sem_post(&semaphores->hiveSem);
-        // Zwolnij semafor wejścia/wyjścia
-        sem_post(&semaphores->entranceSem[entrance]);
+        if (sem_post(&semaphores->hiveSem) == -1) {
+            handleError("[Pszczoła] sem_post (hiveSem)", -1, bee->semid);
+        }
+        if (sem_post(&semaphores->entranceSem[entrance]) == -1) {
+            handleError("[Pszczoła] sem_post (entranceSem)", -1, bee->semid);
+        }
 
         int timeInHive = (rand_r(&seed) % (bee->T_inHive / 2 + 1)) + (bee->T_inHive);
-        sleep(timeInHive);
+        unsigned int remainingSleep = sleep(timeInHive);
+        if (remainingSleep > 0) {
+            handleError("[Pszczoła] sleep interrupted", -1, bee->semid);
+        }
 
-        // Zajmij semafor wejścia/wyjścia
-        sem_wait(&semaphores->entranceSem[entrance]);
-        sem_wait(&semaphores->hiveSem);
+        if (sem_wait(&semaphores->entranceSem[entrance]) == -1) {
+            handleError("[Pszczoła] sem_wait (entranceSem)", -1, bee->semid);
+        }
+        if (sem_wait(&semaphores->hiveSem) == -1) {
+            handleError("[Pszczoła] sem_wait (hiveSem)", -1, bee->semid);
+        }
 
         hive->currentBeesInHive--;
         printf("[Pszczoła %d] Wychodzi przez wejście %d. (W ulu: %d)\n", bee->id, entrance, hive->currentBeesInHive);
 
-        sem_post(&semaphores->hiveSem);
-        // Zwolnij semafor wejścia/wyjścia
-        sem_post(&semaphores->entranceSem[entrance]);
+        if (sem_post(&semaphores->hiveSem) == -1) {
+            handleError("[Pszczoła] sem_post (hiveSem)", -1, bee->semid);
+        }
+        if (sem_post(&semaphores->entranceSem[entrance]) == -1) {
+            handleError("[Pszczoła] sem_post (entranceSem)", -1, bee->semid);
+        }
 
         bee->visits++;
         int outsideTime = (rand_r(&seed) % 11) + 10;
-        sleep(outsideTime);
+        remainingSleep = sleep(outsideTime);
+        if (remainingSleep > 0) {
+            handleError("[Pszczoła] sleep interrupted", -1, bee->semid);
+        }
     }
 
-    sem_wait(&semaphores->hiveSem);
+    if (sem_wait(&semaphores->hiveSem) == -1) {
+        handleError("[Pszczoła] sem_wait (hiveSem)", -1, bee->semid);
+    }
     hive->beesAlive--;
     printf("[Pszczoła %d] Umiera. (Pozostało pszczół: %d)\n", bee->id, hive->beesAlive);
-    sem_post(&semaphores->hiveSem);
+    if (sem_post(&semaphores->hiveSem) == -1) {
+        handleError("[Pszczoła] sem_post (hiveSem)", -1, bee->semid);
+    }
 
     // Odłącz pamięć współdzieloną
     detachSharedMemory(semaphores);

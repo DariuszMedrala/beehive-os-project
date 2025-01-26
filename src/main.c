@@ -30,14 +30,12 @@ int main(int argc, char* argv[]) {
     // Tworzenie pamięci współdzielonej dla danych ula
     int shmid = shmget(IPC_PRIVATE, sizeof(HiveData), IPC_CREAT | 0666);
     if (shmid == -1) {
-        perror("[MAIN] shmget");
-        return 1;
+        handleError("[MAIN] shmget", -1, -1);
     }
 
     HiveData* hive = (HiveData*)attachSharedMemory(shmid);
     if (hive == NULL) {
-        shmctl(shmid, IPC_RMID, NULL); // Zwolnij pamięć współdzieloną HiveData w przypadku błędu
-        return 1;
+        handleError("[MAIN] shmat (HiveData)", shmid, -1);
     }
 
     initHiveData(hive, N, P);
@@ -45,19 +43,23 @@ int main(int argc, char* argv[]) {
     // Tworzenie pamięci współdzielonej dla semaforów
     int semid = shmget(IPC_PRIVATE, sizeof(HiveSemaphores), IPC_CREAT | 0666);
     if (semid == -1) {
-        perror("[MAIN] shmget (semaphores)");
-        shmctl(shmid, IPC_RMID, NULL); // Zwolnij pamięć współdzieloną HiveData w przypadku błędu
-        return 1;
+        handleError("[MAIN] shmget (semaphores)", shmid, -1);
     }
 
     HiveSemaphores* semaphores = (HiveSemaphores*)attachSharedMemory(semid);
     if (semaphores == NULL) {
-        shmctl(shmid, IPC_RMID, NULL); // Zwolnij pamięć współdzieloną HiveData
-        shmctl(semid, IPC_RMID, NULL); // Zwolnij pamięć współdzieloną semaforów
-        return 1;
+        handleError("[MAIN] shmat (semaphores)", shmid, semid);
     }
 
-    initSemaphores(semaphores);
+    if (sem_init(&semaphores->hiveSem, 1, 1) == -1) {
+        handleError("[MAIN] sem_init (hiveSem)", shmid, semid);
+    }
+
+    for (int i = 0; i < 2; i++) {
+        if (sem_init(&semaphores->entranceSem[i], 1, 1) == -1) {
+            handleError("[MAIN] sem_init (entranceSem)", shmid, semid);
+        }
+    }
 
     // Uruchomienie procesu królowej
     pid_t queenPid = fork();
@@ -66,19 +68,17 @@ int main(int argc, char* argv[]) {
         queenWorker(&queenArgs);
         exit(EXIT_SUCCESS);
     } else if (queenPid < 0) {
-        perror("[MAIN] fork (queen)");
-        return 1;
+        handleError("[MAIN] fork (queen)", shmid, semid);
     }
 
     // Uruchomienie procesu pszczelarza
     pid_t beekeeperPid = fork();
     if (beekeeperPid == 0) {
-        BeekeeperArgs keeperArgs = {hive, semid, shmid}; // Przekaż shmid do pszczelarza
+        BeekeeperArgs keeperArgs = {hive, semid, shmid};
         beekeeperWorker(&keeperArgs);
         exit(EXIT_SUCCESS);
     } else if (beekeeperPid < 0) {
-        perror("[MAIN] fork (beekeeper)");
-        return 1;
+        handleError("[MAIN] fork (beekeeper)", shmid, semid);
     }
 
     // Uruchomienie procesów pszczół
@@ -89,25 +89,35 @@ int main(int argc, char* argv[]) {
             beeWorker(&beeArgs);
             exit(EXIT_SUCCESS);
         } else if (beePid < 0) {
-            perror("[MAIN] fork (bee)");
+            handleError("[MAIN] fork (bee)", shmid, semid);
         }
     }
 
     // Czekanie na zakończenie procesów pszczół
     for (int i = 0; i < N; i++) {
-        wait(NULL);
+        if (wait(NULL) == -1) {
+            handleError("[MAIN] wait", shmid, semid);
+        }
     }
 
     // Zakończenie procesów królowej i pszczelarza
-    kill(queenPid, SIGTERM);
-    kill(beekeeperPid, SIGTERM);
+    if (kill(queenPid, SIGTERM) == -1) {
+        handleError("[MAIN] kill (queen)", shmid, semid);
+    }
+    if (kill(beekeeperPid, SIGTERM) == -1) {
+        handleError("[MAIN] kill (beekeeper)", shmid, semid);
+    }
 
     // Usuwanie pamięci współdzielonej i semaforów
     detachSharedMemory(hive);
-    shmctl(shmid, IPC_RMID, NULL);
+    if (shmctl(shmid, IPC_RMID, NULL) == -1) {
+        handleError("[MAIN] shmctl IPC_RMID (HiveData)", shmid, semid);
+    }
 
     detachSharedMemory(semaphores);
-    shmctl(semid, IPC_RMID, NULL);
+    if (shmctl(semid, IPC_RMID, NULL) == -1) {
+        handleError("[MAIN] shmctl IPC_RMID (semaforów)", shmid, semid);
+    }
 
     printf("[MAIN] Koniec symulacji.\n");
     return 0;
