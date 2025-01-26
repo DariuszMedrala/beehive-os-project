@@ -9,7 +9,12 @@
 void queenWorker(QueenArgs* arg) {
     QueenArgs* queen = arg;
     HiveData* hive = queen->hive;
-    HiveSemaphores* semaphores = (HiveSemaphores*)shmat(queen->semid, NULL, 0); // Użyj queen->semid
+
+    // Użyj funkcji pomocniczej do dołączenia pamięci współdzielonej dla semaforów
+    HiveSemaphores* semaphores = (HiveSemaphores*)attachSharedMemory(queen->semid);
+    if (semaphores == NULL) {
+        exit(EXIT_FAILURE);
+    }
 
     int nextBeeID = hive->N;
 
@@ -45,6 +50,7 @@ void queenWorker(QueenArgs* arg) {
         sem_post(&semaphores->hiveSem);
     }
 
-    shmdt(semaphores);
+    // Odłącz pamięć współdzieloną
+    detachSharedMemory(semaphores);
     exit(EXIT_SUCCESS);
 }

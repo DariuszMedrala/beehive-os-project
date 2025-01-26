@@ -10,7 +10,6 @@
 #include <stdlib.h>
 
 void initHiveData(HiveData* hive, int N, int P);
-void initSemaphores(HiveSemaphores* semaphores);
 
 int main(int argc, char* argv[]) {
     if (argc < 4) {
@@ -35,9 +34,9 @@ int main(int argc, char* argv[]) {
         return 1;
     }
 
-    HiveData* hive = (HiveData*)shmat(shmid, NULL, 0);
-    if (hive == (void*)-1) {
-        perror("[MAIN] shmat");
+    HiveData* hive = (HiveData*)attachSharedMemory(shmid);
+    if (hive == NULL) {
+        shmctl(shmid, IPC_RMID, NULL); // Zwolnij pamięć współdzieloną HiveData w przypadku błędu
         return 1;
     }
 
@@ -51,9 +50,8 @@ int main(int argc, char* argv[]) {
         return 1;
     }
 
-    HiveSemaphores* semaphores = (HiveSemaphores*)shmat(semid, NULL, 0);
-    if (semaphores == (void*)-1) {
-        perror("[MAIN] shmat (semaphores)");
+    HiveSemaphores* semaphores = (HiveSemaphores*)attachSharedMemory(semid);
+    if (semaphores == NULL) {
         shmctl(shmid, IPC_RMID, NULL); // Zwolnij pamięć współdzieloną HiveData
         shmctl(semid, IPC_RMID, NULL); // Zwolnij pamięć współdzieloną semaforów
         return 1;
@@ -105,10 +103,10 @@ int main(int argc, char* argv[]) {
     kill(beekeeperPid, SIGTERM);
 
     // Usuwanie pamięci współdzielonej i semaforów
-    shmdt(hive);
+    detachSharedMemory(hive);
     shmctl(shmid, IPC_RMID, NULL);
 
-    shmdt(semaphores);
+    detachSharedMemory(semaphores);
     shmctl(semid, IPC_RMID, NULL);
 
     printf("[MAIN] Koniec symulacji.\n");
@@ -120,18 +118,4 @@ void initHiveData(HiveData* hive, int N, int P) {
     hive->N = N;
     hive->P = P;
     hive->beesAlive = 0;
-}
-
-void initSemaphores(HiveSemaphores* semaphores) {
-    if (sem_init(&semaphores->hiveSem, 1, 1) == -1) {
-        perror("[MAIN] sem_init (hiveSem)");
-        exit(EXIT_FAILURE);
-    }
-
-    for (int i = 0; i < 2; i++) {
-        if (sem_init(&semaphores->entranceSem[i], 1, 1) == -1) {
-            perror("[MAIN] sem_init (entranceSem)");
-            exit(EXIT_FAILURE);
-        }
-    }
 }

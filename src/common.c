@@ -39,3 +39,48 @@ void logMessage(const char* format, ...) {
     fprintf(logFile, "\n");
     fclose(logFile);
 }
+
+// Funkcja dołączająca pamięć współdzieloną
+void* attachSharedMemory(int shmid) {
+    void* sharedMemory = shmat(shmid, NULL, 0);
+    if (sharedMemory == (void*)-1) {
+        perror("shmat");
+        return NULL;
+    }
+    return sharedMemory;
+}
+
+// Funkcja odłączająca pamięć współdzieloną
+void detachSharedMemory(void* sharedMemory) {
+    if (shmdt(sharedMemory) == -1) {
+        perror("shmdt");
+    }
+}
+
+// Funkcja inicjalizująca semafory
+void initSemaphores(HiveSemaphores* semaphores) {
+    if (sem_init(&semaphores->hiveSem, 1, 1) == -1) {
+        perror("sem_init (hiveSem)");
+        exit(EXIT_FAILURE);
+    }
+
+    for (int i = 0; i < 2; i++) {
+        if (sem_init(&semaphores->entranceSem[i], 1, 1) == -1) {
+            perror("sem_init (entranceSem)");
+            exit(EXIT_FAILURE);
+        }
+    }
+}
+
+// Funkcja niszcząca semafory
+void destroySemaphores(HiveSemaphores* semaphores) {
+    if (sem_destroy(&semaphores->hiveSem) == -1) {
+        perror("sem_destroy (hiveSem)");
+    }
+
+    for (int i = 0; i < 2; i++) {
+        if (sem_destroy(&semaphores->entranceSem[i]) == -1) {
+            perror("sem_destroy (entranceSem)");
+        }
+    }
+}

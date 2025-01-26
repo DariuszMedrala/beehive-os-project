@@ -14,9 +14,8 @@ HiveData* getHiveDataAndSemaphores(HiveSemaphores** semaphores) {
         return NULL;
     }
 
-    *semaphores = (HiveSemaphores*)shmat(gBeekeeperArgs->semid, NULL, 0);
-    if (*semaphores == (HiveSemaphores*)-1) {
-        perror("shmat (semaforów)");
+    *semaphores = (HiveSemaphores*)attachSharedMemory(gBeekeeperArgs->semid);
+    if (*semaphores == NULL) {
         return NULL;
     }
 
@@ -40,7 +39,8 @@ void cleanup(int signum) {
         perror("shmctl IPC_RMID (semaforów)");
     } 
 
-    shmdt(semaphores);
+    // Odłącz pamięć współdzieloną
+    detachSharedMemory(semaphores);
     exit(EXIT_SUCCESS);
 }
 
@@ -58,7 +58,8 @@ void handleSignalAddFrames(int signum) {
 
     sem_post(&semaphores->hiveSem);
 
-    shmdt(semaphores);
+    // Odłącz pamięć współdzieloną
+    detachSharedMemory(semaphores);
 }
 
 void handleSignalRemoveFrames(int signum) {
@@ -75,7 +76,8 @@ void handleSignalRemoveFrames(int signum) {
 
     sem_post(&semaphores->hiveSem);
 
-    shmdt(semaphores);
+    // Odłącz pamięć współdzieloną
+    detachSharedMemory(semaphores);
 }
 
 void beekeeperWorker(BeekeeperArgs* arg) {

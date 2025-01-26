@@ -49,5 +49,10 @@ extern int semid;  // Identyfikator pamięci współdzielonej dla semaforów
 void logMessage(const char* format, ...);
 void coloredPrintf(const char* color, const char* format, ...);
 
+// Funkcje pomocnicze do zarządzania pamięcią współdzieloną
+void* attachSharedMemory(int shmid);
+void detachSharedMemory(void* sharedMemory);
+void initSemaphores(HiveSemaphores* semaphores);
+void destroySemaphores(HiveSemaphores* semaphores);
 
 #endif
