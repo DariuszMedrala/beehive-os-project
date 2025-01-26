@@ -5,9 +5,11 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <unistd.h>
+#include <sys/prctl.h>
 
 void queenWorker(QueenArgs* arg) {
     QueenArgs* queen = arg;
+    prctl(PR_SET_NAME, "queen");
 
     // Dołącz pamięć współdzieloną tylko raz
     queen->hive = (HiveData*)attachSharedMemory(queen->shmid);

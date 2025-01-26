@@ -3,9 +3,13 @@
 #include <sys/wait.h>
 #include <unistd.h>
 #include <semaphore.h>
+#include <sys/prctl.h>
 
 void beeWorker(BeeArgs* arg) {
     BeeArgs* bee = arg;
+    char bee_name[16];
+    snprintf(bee_name, sizeof(bee_name), "bee_%d", arg->id);
+    prctl(PR_SET_NAME, bee_name);
 
     // Dołącz pamięć współdzieloną tylko raz
     bee->hive = (HiveData*)attachSharedMemory(bee->shmid);

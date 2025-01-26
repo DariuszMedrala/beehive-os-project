@@ -5,6 +5,7 @@
 #include <semaphore.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <sys/prctl.h>
 
 static BeekeeperArgs* gBeekeeperArgs = NULL;
 
@@ -78,6 +79,7 @@ void cleanup(int signum) {
 
 void beekeeperWorker(BeekeeperArgs* arg) {
     gBeekeeperArgs = arg;
+    prctl(PR_SET_NAME, "beekeeper");
 
     // Dołącz pamięć współdzieloną tylko raz
     gBeekeeperArgs->hive = (HiveData*)attachSharedMemory(gBeekeeperArgs->shmid);
