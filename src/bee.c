@@ -6,7 +6,13 @@
 
 void beeWorker(BeeArgs* arg) {
     BeeArgs* bee = arg;
-    HiveData* hive = bee->hive;
+
+    // Dołącz pamięć współdzieloną tylko raz
+    bee->hive = (HiveData*)attachSharedMemory(bee->shmid);
+    bee->semaphores = (HiveSemaphores*)attachSharedMemory(bee->semid);
+    if (bee->hive == NULL || bee->semaphores == NULL) {
+        handleError("[Pszczoła] attachSharedMemory", -1, bee->semid);
+    }
 
     unsigned int ziarno = time(NULL) + getpid();
     if (ziarno == 0) {
@@ -14,11 +20,6 @@ void beeWorker(BeeArgs* arg) {
     }
 
     double waitTime = 0.5 + (rand_r(&ziarno) % 501) / 1000.0;
-
-    HiveSemaphores* semaphores = (HiveSemaphores*)attachSharedMemory(bee->semid);
-    if (semaphores == NULL) {
-        handleError("[Pszczoła] attachSharedMemory", -1, bee->semid);
-    }
 
     unsigned int seed = time(NULL) + bee->id;
     if (seed == 0) {
@@ -29,20 +30,20 @@ void beeWorker(BeeArgs* arg) {
         int entrance = rand_r(&seed) % 2;
         logMessage(LOG_INFO, "[Pszczoła %d] Rozpoczyna życie w ulu.", bee->id);
 
-        if (sem_wait(&semaphores->entranceSem[entrance]) == -1) {
+        if (sem_wait(&bee->semaphores->entranceSem[entrance]) == -1) {
             handleError("[Pszczoła] sem_wait (entranceSem)", -1, bee->semid);
         }
-        if (sem_wait(&semaphores->hiveSem) == -1) {
+        if (sem_wait(&bee->semaphores->hiveSem) == -1) {
             handleError("[Pszczoła] sem_wait (hiveSem)", -1, bee->semid);
         }
 
-        hive->currentBeesInHive--;
-        logMessage(LOG_INFO, "[Pszczoła %d] Wychodzi przez wejście %d. (W ulu: %d)", bee->id, entrance, hive->currentBeesInHive);
+        bee->hive->currentBeesInHive--;
+        logMessage(LOG_INFO, "[Pszczoła %d] Wychodzi przez wejście %d. (W ulu: %d)", bee->id, entrance, bee->hive->currentBeesInHive);
 
-        if (sem_post(&semaphores->hiveSem) == -1) {
+        if (sem_post(&bee->semaphores->hiveSem) == -1) {
             handleError("[Pszczoła] sem_post (hiveSem)", -1, bee->semid);
         }
-        if (sem_post(&semaphores->entranceSem[entrance]) == -1) {
+        if (sem_post(&bee->semaphores->entranceSem[entrance]) == -1) {
             handleError("[Pszczoła] sem_post (entranceSem)", -1, bee->semid);
         }
 
@@ -53,44 +54,44 @@ void beeWorker(BeeArgs* arg) {
         int entrance = rand_r(&seed) % 2;
 
         // Sprawdź, czy wyjście jest wolne
-        if (sem_trywait(&semaphores->entranceSem[entrance]) == -1) {
+        if (sem_trywait(&bee->semaphores->entranceSem[entrance]) == -1) {
             // Jeśli wyjście jest zajęte, wybierz drugie wyjście
             entrance = 1 - entrance;
-            if (sem_trywait(&semaphores->entranceSem[entrance]) == -1) {
+            if (sem_trywait(&bee->semaphores->entranceSem[entrance]) == -1) {
                 // Jeśli oba wyjścia są zajęte, poczekaj chwilę i spróbuj ponownie
                 sleep(1);
                 continue;
             }
         }
 
-        if (sem_wait(&semaphores->hiveSem) == -1) {
+        if (sem_wait(&bee->semaphores->hiveSem) == -1) {
             handleError("[Pszczoła] sem_wait (hiveSem)", -1, bee->semid);
         }
 
-        while (hive->currentBeesInHive >= hive->P) {
-            if (sem_post(&semaphores->hiveSem) == -1) {
+        while (bee->hive->currentBeesInHive >= bee->hive->P) {
+            if (sem_post(&bee->semaphores->hiveSem) == -1) {
                 handleError("[Pszczoła] sem_post (hiveSem)", -1, bee->semid);
             }
-            if (sem_post(&semaphores->entranceSem[entrance]) == -1) {
+            if (sem_post(&bee->semaphores->entranceSem[entrance]) == -1) {
                 handleError("[Pszczoła] sem_post (entranceSem)", -1, bee->semid);
             }
 
-            if (sem_wait(&semaphores->entranceSem[entrance]) == -1) {
+            if (sem_wait(&bee->semaphores->entranceSem[entrance]) == -1) {
                 handleError("[Pszczoła] sem_wait (entranceSem)", -1, bee->semid);
             }
-            if (sem_wait(&semaphores->hiveSem) == -1) {
+            if (sem_wait(&bee->semaphores->hiveSem) == -1) {
                 handleError("[Pszczoła] sem_wait (hiveSem)", -1, bee->semid);
             }
         }
 
         usleep(waitTime * 1000000);
-        hive->currentBeesInHive++;
-        logMessage(LOG_INFO, "[Pszczoła %d] Wchodzi przez wejście/wyjście %d. (W ulu: %d)", bee->id, entrance, hive->currentBeesInHive);
+        bee->hive->currentBeesInHive++;
+        logMessage(LOG_INFO, "[Pszczoła %d] Wchodzi przez wejście/wyjście %d. (W ulu: %d)", bee->id, entrance, bee->hive->currentBeesInHive);
 
-        if (sem_post(&semaphores->hiveSem) == -1) {
+        if (sem_post(&bee->semaphores->hiveSem) == -1) {
             handleError("[Pszczoła] sem_post (hiveSem)", -1, bee->semid);
         }
-        if (sem_post(&semaphores->entranceSem[entrance]) == -1) {
+        if (sem_post(&bee->semaphores->entranceSem[entrance]) == -1) {
             handleError("[Pszczoła] sem_post (entranceSem)", -1, bee->semid);
         }
 
@@ -101,21 +102,21 @@ void beeWorker(BeeArgs* arg) {
             handleError("[Pszczoła] sleep interrupted", -1, bee->semid);
         }
 
-        if (sem_wait(&semaphores->entranceSem[entrance]) == -1) {
+        if (sem_wait(&bee->semaphores->entranceSem[entrance]) == -1) {
             handleError("[Pszczoła] sem_wait (entranceSem)", -1, bee->semid);
         }
-        if (sem_wait(&semaphores->hiveSem) == -1) {
+        if (sem_wait(&bee->semaphores->hiveSem) == -1) {
             handleError("[Pszczoła] sem_wait (hiveSem)", -1, bee->semid);
         }
 
         usleep(waitTime * 1000000);
-        hive->currentBeesInHive--;
-        logMessage(LOG_INFO, "[Pszczoła %d] Wychodzi przez wejście %d. (W ulu: %d)", bee->id, entrance, hive->currentBeesInHive);
+        bee->hive->currentBeesInHive--;
+        logMessage(LOG_INFO, "[Pszczoła %d] Wychodzi przez wejście %d. (W ulu: %d)", bee->id, entrance, bee->hive->currentBeesInHive);
 
-        if (sem_post(&semaphores->hiveSem) == -1) {
+        if (sem_post(&bee->semaphores->hiveSem) == -1) {
             handleError("[Pszczoła] sem_post (hiveSem)", -1, bee->semid);
         }
-        if (sem_post(&semaphores->entranceSem[entrance]) == -1) {
+        if (sem_post(&bee->semaphores->entranceSem[entrance]) == -1) {
             handleError("[Pszczoła] sem_post (entranceSem)", -1, bee->semid);
         }
 
@@ -127,15 +128,16 @@ void beeWorker(BeeArgs* arg) {
         }
     }
 
-    if (sem_wait(&semaphores->hiveSem) == -1) {
+    if (sem_wait(&bee->semaphores->hiveSem) == -1) {
         handleError("[Pszczoła] sem_wait (hiveSem)", -1, bee->semid);
     }
-    hive->beesAlive--;
-    logMessage(LOG_INFO, "[Pszczoła %d] Umiera. (Pozostało pszczół: %d)", bee->id, hive->beesAlive);
-    if (sem_post(&semaphores->hiveSem) == -1) {
+    bee->hive->beesAlive--;
+    logMessage(LOG_INFO, "[Pszczoła %d] Umiera. (Pozostało pszczół: %d)", bee->id, bee->hive->beesAlive);
+    if (sem_post(&bee->semaphores->hiveSem) == -1) {
         handleError("[Pszczoła] sem_post (hiveSem)", -1, bee->semid);
     }
 
-    detachSharedMemory(semaphores);
+    detachSharedMemory(bee->hive);
+    detachSharedMemory(bee->semaphores);
     exit(EXIT_SUCCESS);
-} 
+}

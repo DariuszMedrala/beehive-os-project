@@ -9,8 +9,10 @@ typedef struct {
     int maxVisits;  // Po ilu wizytach pszczoła umiera
     int T_inHive;   // Czas przebywania pszczoły w ulu (sekundy)
     HiveData* hive; // Wskaźnik na dane ula
+    HiveSemaphores* semaphores; // Wskaźnik na semafory
     bool startInHive;  // Czy pszczoła zaczyna życie w ulu
     int semid;      // Identyfikator pamięci współdzielonej dla semaforów
+    int shmid;      // Identyfikator pamięci współdzielonej dla HiveData
 } BeeArgs;
 
 void beeWorker(BeeArgs* arg); // Funkcja dla procesu pszczoły

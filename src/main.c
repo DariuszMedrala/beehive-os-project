@@ -64,7 +64,7 @@ int main(int argc, char* argv[]) {
     // Uruchomienie procesu królowej
     pid_t queenPid = fork();
     if (queenPid == 0) {
-        QueenArgs queenArgs = {T_k, eggsCount, hive, semid};
+        QueenArgs queenArgs = {T_k, eggsCount, NULL, NULL, semid, shmid};
         queenWorker(&queenArgs);
         exit(EXIT_SUCCESS);
     } else if (queenPid < 0) {
@@ -74,7 +74,7 @@ int main(int argc, char* argv[]) {
     // Uruchomienie procesu pszczelarza
     pid_t beekeeperPid = fork();
     if (beekeeperPid == 0) {
-        BeekeeperArgs keeperArgs = {hive, semid, shmid};
+        BeekeeperArgs keeperArgs = {NULL, NULL, semid, shmid};
         beekeeperWorker(&keeperArgs);
         exit(EXIT_SUCCESS);
     } else if (beekeeperPid < 0) {
@@ -85,7 +85,7 @@ int main(int argc, char* argv[]) {
     for (int i = 0; i < N; i++) {
         pid_t beePid = fork();
         if (beePid == 0) {
-            BeeArgs beeArgs = {i, 0, 3, 10, hive, false, semid};
+            BeeArgs beeArgs = {i, 0, 3, 10, NULL, NULL, false, semid, shmid};
             beeWorker(&beeArgs);
             exit(EXIT_SUCCESS);
         } else if (beePid < 0) {
@@ -122,6 +122,7 @@ int main(int argc, char* argv[]) {
     logMessage(LOG_INFO, "[MAIN] Koniec symulacji.");
     return 0;
 }
+
 void initHiveData(HiveData* hive, int N, int P) {
     hive->currentBeesInHive = 0;
     hive->N = N;

@@ -14,11 +14,7 @@ HiveData* getHiveDataAndSemaphores(HiveSemaphores** semaphores) {
         return NULL;
     }
 
-    *semaphores = (HiveSemaphores*)attachSharedMemory(gBeekeeperArgs->semid);
-    if (*semaphores == NULL) {
-        handleError("[Pszczelarz] attachSharedMemory", gBeekeeperArgs->shmid, gBeekeeperArgs->semid);
-    }
-
+    *semaphores = gBeekeeperArgs->semaphores;
     return gBeekeeperArgs->hive;
 }
 
@@ -39,8 +35,6 @@ void handleSignalAddFrames(int signum) {
     if (sem_post(&semaphores->hiveSem) == -1) {
         handleError("[Pszczelarz] sem_post (hiveSem)", gBeekeeperArgs->shmid, gBeekeeperArgs->semid);
     }
-
-    detachSharedMemory(semaphores);
 }
 
 void handleSignalRemoveFrames(int signum) {
@@ -60,8 +54,6 @@ void handleSignalRemoveFrames(int signum) {
     if (sem_post(&semaphores->hiveSem) == -1) {
         handleError("[Pszczelarz] sem_post (hiveSem)", gBeekeeperArgs->shmid, gBeekeeperArgs->semid);
     }
-
-    detachSharedMemory(semaphores);
 }
 
 void cleanup(int signum) {
@@ -80,11 +72,19 @@ void cleanup(int signum) {
     }
 
     detachSharedMemory(semaphores);
+    detachSharedMemory(hive);
     exit(EXIT_SUCCESS);
 }
 
 void beekeeperWorker(BeekeeperArgs* arg) {
     gBeekeeperArgs = arg;
+
+    // Dołącz pamięć współdzieloną tylko raz
+    gBeekeeperArgs->hive = (HiveData*)attachSharedMemory(gBeekeeperArgs->shmid);
+    gBeekeeperArgs->semaphores = (HiveSemaphores*)attachSharedMemory(gBeekeeperArgs->semid);
+    if (gBeekeeperArgs->hive == NULL || gBeekeeperArgs->semaphores == NULL) {
+        handleError("[Pszczelarz] attachSharedMemory", gBeekeeperArgs->shmid, gBeekeeperArgs->semid);
+    }
 
     // Rejestracja obsługi sygnałów
     struct sigaction sa1;
@@ -113,4 +113,8 @@ void beekeeperWorker(BeekeeperArgs* arg) {
     while (1) {
         sleep(1);
     }
+
+    detachSharedMemory(gBeekeeperArgs->hive);
+    detachSharedMemory(gBeekeeperArgs->semaphores);
+    exit(EXIT_SUCCESS);
 }
