@@ -41,7 +41,13 @@ typedef struct {
     sem_t entranceSem[2];   // Semafor dla każdego wejścia
 } HiveSemaphores;
 
+// Zmienne globalne
+extern int shmid;  // Identyfikator pamięci współdzielonej dla HiveData
+extern int semid;  // Identyfikator pamięci współdzielonej dla semaforów
+
+// Funkcje
 void logMessage(const char* format, ...);
 void coloredPrintf(const char* color, const char* format, ...);
+void cleanup(int signum);  // Funkcja porządkowa
 
 #endif

@@ -1,9 +1,11 @@
 #include "common.h"
-#include <stdio.h>
 #include <stdarg.h>
 #include <time.h>
 #include <stdlib.h>
 
+// Definicje zmiennych globalnych
+int shmid = -1;  // Identyfikator pamięci współdzielonej dla HiveData
+int semid = -1;  // Identyfikator pamięci współdzielonej dla semaforów
 
 void coloredPrintf(const char* color, const char* format, ...) {
     va_list args;
@@ -36,4 +38,18 @@ void logMessage(const char* format, ...) {
 
     fprintf(logFile, "\n");
     fclose(logFile);
+}
+
+// Funkcja porządkowa
+void cleanup(int signum) {
+   
+    // Zwolnij pamięć współdzieloną dla HiveData
+    if (shmid != -1 && shmctl(shmid, IPC_RMID, NULL) == -1) {
+        perror("shmctl IPC_RMID (HiveData)");
+    } 
+    // Zwolnij pamięć współdzieloną dla semaforów
+    if (semid != -1 && shmctl(semid, IPC_RMID, NULL) == -1) {
+        perror("shmctl IPC_RMID (semaforów)");
+    } 
+    exit(EXIT_SUCCESS);
 }

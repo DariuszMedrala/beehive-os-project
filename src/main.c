@@ -6,6 +6,8 @@
 #include <sys/shm.h>
 #include <sys/sem.h>
 #include <sys/wait.h>
+#include <signal.h>
+#include <stdlib.h>
 
 void initHiveData(HiveData* hive, int N, int P);
 void initSemaphores(HiveSemaphores* semaphores);
@@ -27,7 +29,7 @@ int main(int argc, char* argv[]) {
     }
 
     // Tworzenie pamięci współdzielonej dla danych ula
-    int shmid = shmget(IPC_PRIVATE, sizeof(HiveData), IPC_CREAT | 0666);
+    shmid = shmget(IPC_PRIVATE, sizeof(HiveData), IPC_CREAT | 0666);
     if (shmid == -1) {
         perror("[MAIN] shmget");
         return 1;
@@ -42,24 +44,30 @@ int main(int argc, char* argv[]) {
     initHiveData(hive, N, P);
 
     // Tworzenie pamięci współdzielonej dla semaforów
-    int semid = shmget(IPC_PRIVATE, sizeof(HiveSemaphores), IPC_CREAT | 0666);
+    semid = shmget(IPC_PRIVATE, sizeof(HiveSemaphores), IPC_CREAT | 0666);
     if (semid == -1) {
         perror("[MAIN] shmget (semaphores)");
+        shmctl(shmid, IPC_RMID, NULL); // Zwolnij pamięć współdzieloną HiveData w przypadku błędu
         return 1;
     }
 
     HiveSemaphores* semaphores = (HiveSemaphores*)shmat(semid, NULL, 0);
     if (semaphores == (void*)-1) {
         perror("[MAIN] shmat (semaphores)");
+        shmctl(shmid, IPC_RMID, NULL); // Zwolnij pamięć współdzieloną HiveData
+        shmctl(semid, IPC_RMID, NULL); // Zwolnij pamięć współdzieloną semaforów
         return 1;
     }
 
     initSemaphores(semaphores);
 
+    // Przechwyć sygnał SIGINT
+    signal(SIGINT, cleanup);
+
     // Uruchomienie procesu królowej
     pid_t queenPid = fork();
     if (queenPid == 0) {
-        QueenArgs queenArgs = {T_k, eggsCount, hive, semid}; // Przekaż semid
+        QueenArgs queenArgs = {T_k, eggsCount, hive, semid};
         queenWorker(&queenArgs);
         exit(EXIT_SUCCESS);
     } else if (queenPid < 0) {
@@ -70,7 +78,7 @@ int main(int argc, char* argv[]) {
     // Uruchomienie procesu pszczelarza
     pid_t beekeeperPid = fork();
     if (beekeeperPid == 0) {
-        BeekeeperArgs keeperArgs = {hive, semid}; // Przekaż semid
+        BeekeeperArgs keeperArgs = {hive, semid};
         beekeeperWorker(&keeperArgs);
         exit(EXIT_SUCCESS);
     } else if (beekeeperPid < 0) {
@@ -82,7 +90,7 @@ int main(int argc, char* argv[]) {
     for (int i = 0; i < N; i++) {
         pid_t beePid = fork();
         if (beePid == 0) {
-            BeeArgs beeArgs = {i, 0, 3, 60, hive, false, semid}; // Przekaż semid
+            BeeArgs beeArgs = {i, 0, 3, 60, hive, false, semid};
             beeWorker(&beeArgs);
             exit(EXIT_SUCCESS);
         } else if (beePid < 0) {
