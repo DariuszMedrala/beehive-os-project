@@ -3,13 +3,53 @@
 #include <signal.h>
 #include <common.h>
 #include <semaphore.h>
+#include <stdlib.h>
+#include <stdio.h>
 
 static BeekeeperArgs* gBeekeeperArgs = NULL;
 
+// Funkcja pomocnicza do uzyskania wskaźnika na HiveData i semafory
+HiveData* getHiveDataAndSemaphores(HiveSemaphores** semaphores) {
+    if (gBeekeeperArgs == NULL) {
+        return NULL;
+    }
+
+    *semaphores = (HiveSemaphores*)shmat(gBeekeeperArgs->semid, NULL, 0);
+    if (*semaphores == (HiveSemaphores*)-1) {
+        perror("shmat (semaforów)");
+        return NULL;
+    }
+
+    return gBeekeeperArgs->hive;
+}
+
+void cleanup(int signum) {
+    (void)signum; // Oznacz jako nieużywany
+
+    HiveSemaphores* semaphores;
+    HiveData* hive = getHiveDataAndSemaphores(&semaphores);
+    if (hive == NULL) return;
+
+    // Zwolnij pamięć współdzieloną dla HiveData
+    if (shmctl(gBeekeeperArgs->shmid, IPC_RMID, NULL) == -1) {
+        perror("shmctl IPC_RMID (HiveData)");
+    } 
+
+    // Zwolnij pamięć współdzieloną dla semaforów
+    if (shmctl(gBeekeeperArgs->semid, IPC_RMID, NULL) == -1) {
+        perror("shmctl IPC_RMID (semaforów)");
+    } 
+
+    shmdt(semaphores);
+    exit(EXIT_SUCCESS);
+}
+
 void handleSignalAddFrames(int signum) {
-    if (gBeekeeperArgs == NULL) return;
-    HiveData* hive = gBeekeeperArgs->hive;
-    HiveSemaphores* semaphores = (HiveSemaphores*)shmat(gBeekeeperArgs->semid, NULL, 0); // Użyj gBeekeeperArgs->semid
+    (void)signum; // Oznacz jako nieużywany
+
+    HiveSemaphores* semaphores;
+    HiveData* hive = getHiveDataAndSemaphores(&semaphores);
+    if (hive == NULL) return;
 
     sem_wait(&semaphores->hiveSem);
 
@@ -22,9 +62,11 @@ void handleSignalAddFrames(int signum) {
 }
 
 void handleSignalRemoveFrames(int signum) {
-    if (gBeekeeperArgs == NULL) return;
-    HiveData* hive = gBeekeeperArgs->hive;
-    HiveSemaphores* semaphores = (HiveSemaphores*)shmat(gBeekeeperArgs->semid, NULL, 0); // Użyj gBeekeeperArgs->semid
+    (void)signum; // Oznacz jako nieużywany
+
+    HiveSemaphores* semaphores;
+    HiveData* hive = getHiveDataAndSemaphores(&semaphores);
+    if (hive == NULL) return;
 
     sem_wait(&semaphores->hiveSem);
 
@@ -39,6 +81,7 @@ void handleSignalRemoveFrames(int signum) {
 void beekeeperWorker(BeekeeperArgs* arg) {
     gBeekeeperArgs = arg;
 
+    // Rejestracja obsługi sygnałów
     struct sigaction sa1;
     memset(&sa1, 0, sizeof(sa1));
     sa1.sa_handler = handleSignalAddFrames;
@@ -53,9 +96,16 @@ void beekeeperWorker(BeekeeperArgs* arg) {
         perror("[Pszczelarz] sigaction(SIGUSR2)");
     }
 
-    while (1) {
-        sleep(1); // Pszczelarz działa w tle
+    // Rejestracja obsługi sygnału SIGINT (Ctrl+C)
+    struct sigaction sa3;
+    memset(&sa3, 0, sizeof(sa3));
+    sa3.sa_handler = cleanup;
+    if (sigaction(SIGINT, &sa3, NULL) == -1) {
+        perror("[Pszczelarz] sigaction(SIGINT)");
     }
 
-    exit(EXIT_SUCCESS);
+    // Pszczelarz działa w tle
+    while (1) {
+        sleep(1);
+    }
 }

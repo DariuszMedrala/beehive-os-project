@@ -6,6 +6,7 @@
 typedef struct {
     HiveData* hive; // Wskaźnik na dane ula
     int semid;      // Identyfikator pamięci współdzielonej dla semaforów
+    int shmid;      // Identyfikator pamięci współdzielonej dla HiveData
 } BeekeeperArgs;
 
 void beekeeperWorker(BeekeeperArgs* arg); // Funkcja dla procesu pszczelarza

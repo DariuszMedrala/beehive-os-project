@@ -39,17 +39,3 @@ void logMessage(const char* format, ...) {
     fprintf(logFile, "\n");
     fclose(logFile);
 }
-
-// Funkcja porządkowa
-void cleanup(int signum) {
-   
-    // Zwolnij pamięć współdzieloną dla HiveData
-    if (shmid != -1 && shmctl(shmid, IPC_RMID, NULL) == -1) {
-        perror("shmctl IPC_RMID (HiveData)");
-    } 
-    // Zwolnij pamięć współdzieloną dla semaforów
-    if (semid != -1 && shmctl(semid, IPC_RMID, NULL) == -1) {
-        perror("shmctl IPC_RMID (semaforów)");
-    } 
-    exit(EXIT_SUCCESS);
-}

@@ -48,6 +48,6 @@ extern int semid;  // Identyfikator pamięci współdzielonej dla semaforów
 // Funkcje
 void logMessage(const char* format, ...);
 void coloredPrintf(const char* color, const char* format, ...);
-void cleanup(int signum);  // Funkcja porządkowa
+
 
 #endif

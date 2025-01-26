@@ -29,7 +29,7 @@ int main(int argc, char* argv[]) {
     }
 
     // Tworzenie pamięci współdzielonej dla danych ula
-    shmid = shmget(IPC_PRIVATE, sizeof(HiveData), IPC_CREAT | 0666);
+    int shmid = shmget(IPC_PRIVATE, sizeof(HiveData), IPC_CREAT | 0666);
     if (shmid == -1) {
         perror("[MAIN] shmget");
         return 1;
@@ -44,7 +44,7 @@ int main(int argc, char* argv[]) {
     initHiveData(hive, N, P);
 
     // Tworzenie pamięci współdzielonej dla semaforów
-    semid = shmget(IPC_PRIVATE, sizeof(HiveSemaphores), IPC_CREAT | 0666);
+    int semid = shmget(IPC_PRIVATE, sizeof(HiveSemaphores), IPC_CREAT | 0666);
     if (semid == -1) {
         perror("[MAIN] shmget (semaphores)");
         shmctl(shmid, IPC_RMID, NULL); // Zwolnij pamięć współdzieloną HiveData w przypadku błędu
@@ -61,9 +61,6 @@ int main(int argc, char* argv[]) {
 
     initSemaphores(semaphores);
 
-    // Przechwyć sygnał SIGINT
-    signal(SIGINT, cleanup);
-
     // Uruchomienie procesu królowej
     pid_t queenPid = fork();
     if (queenPid == 0) {
@@ -78,7 +75,7 @@ int main(int argc, char* argv[]) {
     // Uruchomienie procesu pszczelarza
     pid_t beekeeperPid = fork();
     if (beekeeperPid == 0) {
-        BeekeeperArgs keeperArgs = {hive, semid};
+        BeekeeperArgs keeperArgs = {hive, semid, shmid}; // Przekaż shmid do pszczelarza
         beekeeperWorker(&keeperArgs);
         exit(EXIT_SUCCESS);
     } else if (beekeeperPid < 0) {
