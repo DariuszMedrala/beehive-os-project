@@ -2,8 +2,13 @@
 #include "bee.h"
 #include "queen.h"
 #include "beekeeper.h"
+#include <sys/ipc.h>
+#include <sys/shm.h>
+#include <sys/sem.h>
+#include <sys/wait.h>
 
 void initHiveData(HiveData* hive, int N, int P);
+void initSemaphores(HiveSemaphores* semaphores);
 
 int main(int argc, char* argv[]) {
     if (argc < 4) {
@@ -14,133 +19,94 @@ int main(int argc, char* argv[]) {
     int T_k = atoi(argv[2]);
     int eggsCount = atoi(argv[3]);
 
-    int P = (N/2) - 1;
+    int P = (N / 2) - 1;
 
-    if (N <= 0 || T_k <= 0 || eggsCount <= 0 ) {
+    if (N <= 0 || T_k <= 0 || eggsCount <= 0) {
         fprintf(stderr, "Błędne wartości. Upewnij się, że wszystko > 0.\n");
         return 1;
     }
 
-    // Przykład otwarcia pliku logów z obsługą błędów
-    int logFile = open("beehive.log", O_WRONLY | O_CREAT | O_TRUNC, 0644);
-    if (logFile < 0) {
-        perror("[MAIN] open(\"beehive.log\")");
-        return 1;
-    }
-    const char* startMsg = "Beehive simulation started.\n";
-    if (write(logFile, startMsg, strlen(startMsg)) < 0) {
-        perror("[MAIN] write(beehive.log)");
-    }
-    logMessage("[MAIN] Program started with arguments: N=%s, T_k=%s, eggsCount=%s",
-               argv[1], argv[2], argv[3]);
-    if (close(logFile) < 0) {
-        perror("[MAIN] close(beehive.log)");
-    }
-
-    // Inicjalizacja danych ula
-    HiveData hive;
-    initHiveData(&hive, N, P);
-    
-    // Tworzenie wątku królowej
-    pthread_t queenThread;
-    QueenArgs* queenArgs = malloc(sizeof(QueenArgs));
-    if (!queenArgs) {
-        perror("[MAIN] malloc queenArgs");
-        return 1;
-    }
-    queenArgs->T_k = T_k;
-    queenArgs->eggsCount = eggsCount;
-    queenArgs->hive = &hive;
-
-    if (pthread_create(&queenThread, NULL, queenWorker, queenArgs) != 0) {
-        perror("[MAIN] pthread_create queen");
-        free(queenArgs);
+    // Tworzenie pamięci współdzielonej dla danych ula
+    int shmid = shmget(IPC_PRIVATE, sizeof(HiveData), IPC_CREAT | 0666);
+    if (shmid == -1) {
+        perror("[MAIN] shmget");
         return 1;
     }
 
-    // Tworzenie wątku pszczelarza
-    pthread_t beekeeperThread;
-    BeekeeperArgs* keeperArgs = malloc(sizeof(BeekeeperArgs));
-    if (!keeperArgs) {
-        perror("[MAIN] malloc keeperArgs");
-        free(queenArgs);
-        return 1;
-    }
-    keeperArgs->hive = &hive;
-    if (pthread_create(&beekeeperThread, NULL, beekeeperWorker, keeperArgs) != 0) {
-        perror("[MAIN] pthread_create beekeeper");
-        free(queenArgs);
-        free(keeperArgs);
+    HiveData* hive = (HiveData*)shmat(shmid, NULL, 0);
+    if (hive == (void*)-1) {
+        perror("[MAIN] shmat");
         return 1;
     }
 
-    // Tworzenie wątków pszczół robotnic (początkowych)
-    pthread_t* beeThreads = malloc(sizeof(pthread_t) * N);
-    if (!beeThreads) {
-        perror("[MAIN] malloc beeThreads");
-        free(queenArgs);
-        free(keeperArgs);
+    initHiveData(hive, N, P);
+
+    // Tworzenie pamięci współdzielonej dla semaforów
+    int semid = shmget(IPC_PRIVATE, sizeof(HiveSemaphores), IPC_CREAT | 0666);
+    if (semid == -1) {
+        perror("[MAIN] shmget (semaphores)");
         return 1;
     }
 
+    HiveSemaphores* semaphores = (HiveSemaphores*)shmat(semid, NULL, 0);
+    if (semaphores == (void*)-1) {
+        perror("[MAIN] shmat (semaphores)");
+        return 1;
+    }
+
+    initSemaphores(semaphores);
+
+    // Uruchomienie procesu królowej
+    pid_t queenPid = fork();
+    if (queenPid == 0) {
+        QueenArgs queenArgs = {T_k, eggsCount, hive, semid}; // Przekaż semid
+        queenWorker(&queenArgs);
+        exit(EXIT_SUCCESS);
+    } else if (queenPid < 0) {
+        perror("[MAIN] fork (queen)");
+        return 1;
+    }
+
+    // Uruchomienie procesu pszczelarza
+    pid_t beekeeperPid = fork();
+    if (beekeeperPid == 0) {
+        BeekeeperArgs keeperArgs = {hive, semid}; // Przekaż semid
+        beekeeperWorker(&keeperArgs);
+        exit(EXIT_SUCCESS);
+    } else if (beekeeperPid < 0) {
+        perror("[MAIN] fork (beekeeper)");
+        return 1;
+    }
+
+    // Uruchomienie procesów pszczół
     for (int i = 0; i < N; i++) {
-        BeeArgs* b = malloc(sizeof(BeeArgs));
-        if (!b) {
-            perror("[MAIN] malloc BeeArgs");
-            // Możemy pominąć lub obsłużyć awaryjnie
-            continue;
-        }
-        b->id = i;      // ID od 0 do workerBeesCount-1
-        b->visits = 0;
-        b->maxVisits = 3;  // po ilu wizytach pszczoła umiera
-        b->T_inHive = 60;   // czas w ulu
-        b->hive = &hive;
-
-        // Zwiększamy beesAlive
-        if (pthread_mutex_lock(&hive.hiveMutex) != 0) {
-            perror("[MAIN] pthread_mutex_lock (beesAlive++)");
-            free(b);
-            continue;
-        }
-        hive.beesAlive++;
-        if (pthread_mutex_unlock(&hive.hiveMutex) != 0) {
-            perror("[MAIN] pthread_mutex_unlock (beesAlive++)");
-            free(b);
-            continue;
-        }
-
-        if (pthread_create(&beeThreads[i], NULL, beeWorker, b) != 0) {
-            perror("[MAIN] pthread_create beeWorker");
-            free(b);
+        pid_t beePid = fork();
+        if (beePid == 0) {
+            BeeArgs beeArgs = {i, 0, 3, 60, hive, false, semid}; // Przekaż semid
+            beeWorker(&beeArgs);
+            exit(EXIT_SUCCESS);
+        } else if (beePid < 0) {
+            perror("[MAIN] fork (bee)");
         }
     }
 
-    // Czekamy, aż początkowe wątki pszczół skończą życie
+    // Czekanie na zakończenie procesów pszczół
     for (int i = 0; i < N; i++) {
-        pthread_join(beeThreads[i], NULL);
-    }
-    free(beeThreads);
-
-    // Jednak królowa i pszczelarz działają w nieskończoność:
-    // => czekamy na ich zakończenie (co nie nastąpi, póki nie przerwiemy programu).
-    pthread_join(queenThread, NULL);
-    pthread_join(beekeeperThread, NULL);
-
-    free(queenArgs);
-    free(keeperArgs);
-
-    if (pthread_mutex_destroy(&hive.hiveMutex) != 0) {
-        perror("[MAIN] pthread_mutex_destroy");
-    }
-    if (pthread_mutex_destroy(&hive.entranceMutex[0]) != 0) {
-    perror("[MAIN] pthread_mutex_destroy(entranceMutex[0])");
-    }
-    if (pthread_mutex_destroy(&hive.entranceMutex[1]) != 0) {
-    perror("[MAIN] pthread_mutex_destroy(entranceMutex[1])");
+        wait(NULL);
     }
 
+    // Zakończenie procesów królowej i pszczelarza
+    kill(queenPid, SIGTERM);
+    kill(beekeeperPid, SIGTERM);
 
-    printf("[MAIN] Koniec symulacji. (Praktycznie nigdy tu nie dojdzie)\n");
+    // Usuwanie pamięci współdzielonej i semaforów
+    shmdt(hive);
+    shmctl(shmid, IPC_RMID, NULL);
+
+    shmdt(semaphores);
+    shmctl(semid, IPC_RMID, NULL);
+
+    printf("[MAIN] Koniec symulacji.\n");
     return 0;
 }
 
@@ -148,23 +114,19 @@ void initHiveData(HiveData* hive, int N, int P) {
     hive->currentBeesInHive = 0;
     hive->N = N;
     hive->P = P;
-    hive->entranceInUse[0] = false;
-    hive->entranceInUse[1] = false;
     hive->beesAlive = 0;
+}
 
-    // Inicjalizacja mutexów
-    if (pthread_mutex_init(&hive->hiveMutex, NULL) != 0) {
-        perror("[MAIN] pthread_mutex_init(hiveMutex)");
+void initSemaphores(HiveSemaphores* semaphores) {
+    if (sem_init(&semaphores->hiveSem, 1, 1) == -1) {
+        perror("[MAIN] sem_init (hiveSem)");
         exit(EXIT_FAILURE);
     }
 
-    if (pthread_mutex_init(&hive->entranceMutex[0], NULL) != 0) {
-        perror("[MAIN] pthread_mutex_init(entranceMutex[0])");
-        exit(EXIT_FAILURE);
-    }
-
-    if (pthread_mutex_init(&hive->entranceMutex[1], NULL) != 0) {
-        perror("[MAIN] pthread_mutex_init(entranceMutex[1])");
-        exit(EXIT_FAILURE);
+    for (int i = 0; i < 2; i++) {
+        if (sem_init(&semaphores->entranceSem[i], 1, 1) == -1) {
+            perror("[MAIN] sem_init (entranceSem)");
+            exit(EXIT_FAILURE);
+        }
     }
 }

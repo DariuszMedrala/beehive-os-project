@@ -4,11 +4,10 @@
 #include "common.h"
 
 typedef struct {
-    HiveData* hive;
+    HiveData* hive; // Wskaźnik na dane ula
+    int semid;      // Identyfikator pamięci współdzielonej dla semaforów
 } BeekeeperArgs;
 
-void* beekeeperWorker(void* arg);
-void handleSignalAddFrames(int signum);
-void handleSignalRemoveFrames(int signum);
+void beekeeperWorker(BeekeeperArgs* arg); // Funkcja dla procesu pszczelarza
 
 #endif

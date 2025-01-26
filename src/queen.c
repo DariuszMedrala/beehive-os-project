@@ -1,66 +1,40 @@
 #include "queen.h"
-#include "bee.h" // żeby móc tworzyć nowe wątki pszczół
+#include "bee.h"
 #include "common.h"
+#include <semaphore.h>
+#include <sys/types.h>
+#include <sys/wait.h>
+#include <unistd.h>
 
-
-
-void* queenWorker(void* arg) {
-    QueenArgs* queen = (QueenArgs*)arg;
+void queenWorker(QueenArgs* arg) {
+    QueenArgs* queen = arg;
     HiveData* hive = queen->hive;
+    HiveSemaphores* semaphores = (HiveSemaphores*)shmat(queen->semid, NULL, 0); // Użyj queen->semid
 
-    // Zmienna statyczna lub globalna do generowania unikalnych ID nowo narodzonych pszczół
-   
     int nextBeeID = hive->N;
 
     while (1) {
-        sleep(queen->T_k); // co T_k sekund
+        sleep(queen->T_k);
 
-        if (pthread_mutex_lock(&hive->hiveMutex) != 0) {
-            perror("[Królowa] pthread_mutex_lock");
-            break; // lub pthread_exit(NULL)
-        }
+        sem_wait(&semaphores->hiveSem);
 
         int wolneMiejsce = hive->P - hive->currentBeesInHive;
-        if (wolneMiejsce >= queen->eggsCount && queen->eggsCount < (hive->N - hive->beesAlive )) {
+        if (wolneMiejsce >= queen->eggsCount && queen->eggsCount < (hive->N - hive->beesAlive)) {
             coloredPrintf(GREEN, "[Królowa] Składa %d jaja.\n", queen->eggsCount);
-            coloredPrintf(GREEN, "~~~~~~~~~~~~\n"
-                           "  /      \\ \n"
-                           " /        \\ \n"
-                           " |   🐝   |\n"
-                           " \\        /\n"
-                           "  \\______/\n");
-                           
 
-            // Tworzymy faktyczne wątki pszczół
             for (int i = 0; i < queen->eggsCount; i++) {
-                // Zwiększamy beesAlive
                 hive->beesAlive++;
                 hive->currentBeesInHive++;
 
-                // Tworzymy nową strukturę BeeArgs dla każdej nowej pszczoły
-                BeeArgs* newBee = (BeeArgs*)malloc(sizeof(BeeArgs));
-                if (!newBee) {
-                    perror("[Królowa] malloc newBee");
-                    hive->beesAlive--;
-                    continue;
-                }
-                newBee->id = nextBeeID++;
-                newBee->visits = 0;
-                newBee->maxVisits = 3;   // nowo narodzona pszczoła też żyje do 3 wizyt
-                newBee->T_inHive = 60;    // i spędza 2 sek w ulu
-                newBee->hive = hive;
-                newBee->startInHive = true;
-                
+                BeeArgs beeArgs = {nextBeeID++, 0, 3, 60, hive, false, queen->semid}; // Przekaż semid do pszczoły
 
-                // Tworzymy wątek nowej pszczoły
-                pthread_t newBeeThread;
-                if (pthread_create(&newBeeThread, NULL, beeWorker, newBee) != 0) {
-                    perror("[Królowa] pthread_create newBee");
+                pid_t beePid = fork();
+                if (beePid == 0) {
+                    beeWorker(&beeArgs);
+                    exit(EXIT_SUCCESS);
+                } else if (beePid < 0) {
+                    perror("[Królowa] fork");
                     hive->beesAlive--;
-                    free(newBee);
-                } else {
-                    // żeby nie musieć wywoływać pthread_join() dla nowej pszczoły
-                    pthread_detach(newBeeThread);
                 }
             }
             printf("[Królowa] Teraz żywych pszczół: %d\n", hive->beesAlive);
@@ -68,11 +42,9 @@ void* queenWorker(void* arg) {
             printf("[Królowa] Za mało miejsca w ulu (wolne: %d) lub brak miejsca w kolonii.\n", wolneMiejsce);
         }
 
-        if (pthread_mutex_unlock(&hive->hiveMutex) != 0) {
-            perror("[Królowa] pthread_mutex_unlock");
-            break;
-        }
+        sem_post(&semaphores->hiveSem);
     }
 
-    pthread_exit(NULL);
+    shmdt(semaphores);
+    exit(EXIT_SUCCESS);
 }
