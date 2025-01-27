@@ -68,7 +68,7 @@ void logMessage(LogLevel level, const char* format, ...) {
 
     // Log to file if enabled and level meets the threshold
     if (logConfig.logToFile && level >= logConfig.fileLogLevel) {
-        FILE* logFile = fopen("beehive.log", "a");
+        FILE* logFile = fopen("beehive.log", "w"); // Zmiana z "a" na "w"
         if (!logFile) {
             perror("Failed to open log file");
             return;
