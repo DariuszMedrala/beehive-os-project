@@ -9,77 +9,103 @@
 #include <signal.h>
 #include <stdlib.h>
 
-void initHiveData(HiveData* hive, int N);
+/**
+ * Initializes the hive data with default values.
+ * 
+ * @param hive Pointer to the HiveData structure to initialize.
+ * @param N Initial size of the hive (number of frames).
+ */
+void initHiveData(HiveData* hive, int N) {
+    hive->currentBeesInHive = 0;
+    hive->N = N;
+    hive->beesAlive = 0;
+}
 
+/**
+ * Main entry point of the hive simulation program.
+ * 
+ * Detailed functionality:
+ * 1. Validates command-line arguments for hive size (N), queen's egg-laying interval (T_k), and egg count per cycle.
+ * 2. Creates shared memory segments for hive data and semaphores.
+ * 3. Initializes hive data and semaphores.
+ * 4. Spawns the queen, beekeeper, and initial bee processes.
+ * 5. Waits for all bee processes to complete and cleans up resources.
+ * 
+ * @param argc Number of command-line arguments.
+ * @param argv Array of command-line arguments.
+ * @return 0 on success, or 1 on failure.
+ */
 int main(int argc, char* argv[]) {
     if (argc < 4) {
-        fprintf(stderr, "Poddaj argumenty: %s <N: początkowa liczba pszczół w roju.> <T_k: czas co jaki królowa składa jaja.> <eggsCount: jaką ilośc jaj ma złożyć.> \n", argv[0]);
+        fprintf(stderr, "Usage: %s <N: initial number of hive frames> <T_k: queen egg-laying interval> <eggsCount: eggs per cycle>\n", argv[0]);
         return 1;
     }
+
     int N = atoi(argv[1]);
     int T_k = atoi(argv[2]);
     int eggsCount = atoi(argv[3]);
 
     if (N <= 0 || T_k <= 0 || eggsCount <= 0) {
-        fprintf(stderr, "Błędne wartości. Upewnij się, że wszystko > 0.\n");
+        fprintf(stderr, "Error: All arguments must be positive integers.\n");
         return 1;
     }
 
-    // Tworzenie pamięci współdzielonej dla danych ula
+    // Create shared memory for hive data
     int shmid = shmget(IPC_PRIVATE, sizeof(HiveData), IPC_CREAT | 0666);
     if (shmid == -1) {
-        handleError("[MAIN] shmget", -1, -1);
+        handleError("[MAIN] Failed to create shared memory for HiveData", -1, -1);
     }
 
     HiveData* hive = (HiveData*)attachSharedMemory(shmid);
     if (hive == NULL) {
-        handleError("[MAIN] shmat (HiveData)", shmid, -1);
+        handleError("[MAIN] Failed to attach shared memory for HiveData", shmid, -1);
     }
 
     initHiveData(hive, N);
 
-    // Tworzenie pamięci współdzielonej dla semaforów
+    // Create shared memory for semaphores
     int semid = shmget(IPC_PRIVATE, sizeof(HiveSemaphores), IPC_CREAT | 0666);
     if (semid == -1) {
-        handleError("[MAIN] shmget (semaphores)", shmid, -1);
+        handleError("[MAIN] Failed to create shared memory for semaphores", shmid, -1);
     }
 
     HiveSemaphores* semaphores = (HiveSemaphores*)attachSharedMemory(semid);
     if (semaphores == NULL) {
-        handleError("[MAIN] shmat (semaphores)", shmid, semid);
+        handleError("[MAIN] Failed to attach shared memory for semaphores", shmid, semid);
     }
 
+    // Initialize semaphores
     if (sem_init(&semaphores->hiveSem, 1, 1) == -1) {
-        handleError("[MAIN] sem_init (hiveSem)", shmid, semid);
+        handleError("[MAIN] Failed to initialize hiveSem", shmid, semid);
     }
 
     for (int i = 0; i < 2; i++) {
         if (sem_init(&semaphores->entranceSem[i], 1, 1) == -1) {
-            handleError("[MAIN] sem_init (entranceSem)", shmid, semid);
+            handleError("[MAIN] Failed to initialize entranceSem", shmid, semid);
         }
     }
 
-    // Uruchomienie procesu królowej
+    // Spawn the queen process
     pid_t queenPid = fork();
     if (queenPid == 0) {
         QueenArgs queenArgs = {T_k, eggsCount, NULL, NULL, semid, shmid};
         queenWorker(&queenArgs);
         exit(EXIT_SUCCESS);
     } else if (queenPid < 0) {
-        handleError("[MAIN] fork (queen)", shmid, semid);
+        handleError("[MAIN] Failed to fork queen process", shmid, semid);
     }
 
-    // Uruchomienie procesu pszczelarza
+    // Spawn the beekeeper process
     pid_t beekeeperPid = fork();
     if (beekeeperPid == 0) {
         BeekeeperArgs keeperArgs = {NULL, NULL, semid, shmid};
         beekeeperWorker(&keeperArgs);
         exit(EXIT_SUCCESS);
     } else if (beekeeperPid < 0) {
-        handleError("[MAIN] fork (beekeeper)", shmid, semid);
+        handleError("[MAIN] Failed to fork beekeeper process", shmid, semid);
     }
 
-    // Uruchomienie procesów pszczół
+    // Spawn initial bee processes
     for (int i = 0; i < N; i++) {
         pid_t beePid = fork();
         if (beePid == 0) {
@@ -87,42 +113,36 @@ int main(int argc, char* argv[]) {
             beeWorker(&beeArgs);
             exit(EXIT_SUCCESS);
         } else if (beePid < 0) {
-            handleError("[MAIN] fork (bee)", shmid, semid);
+            handleError("[MAIN] Failed to fork bee process", shmid, semid);
         }
     }
 
-    // Czekanie na zakończenie procesów pszczół
+    // Wait for all bee processes to finish
     for (int i = 0; i < N; i++) {
         if (wait(NULL) == -1) {
-            handleError("[MAIN] wait", shmid, semid);
+            handleError("[MAIN] Failed to wait for bee processes", shmid, semid);
         }
     }
 
-    // Zakończenie procesów królowej i pszczelarza
+    // Terminate the queen and beekeeper processes
     if (kill(queenPid, SIGTERM) == -1) {
-        handleError("[MAIN] kill (queen)", shmid, semid);
+        handleError("[MAIN] Failed to terminate queen process", shmid, semid);
     }
     if (kill(beekeeperPid, SIGTERM) == -1) {
-        handleError("[MAIN] kill (beekeeper)", shmid, semid);
+        handleError("[MAIN] Failed to terminate beekeeper process", shmid, semid);
     }
 
-    // Usuwanie pamięci współdzielonej i semaforów
+    // Cleanup shared memory and semaphores
     detachSharedMemory(hive);
     if (shmctl(shmid, IPC_RMID, NULL) == -1) {
-        handleError("[MAIN] shmctl IPC_RMID (HiveData)", shmid, semid);
+        handleError("[MAIN] Failed to remove shared memory for HiveData", shmid, semid);
     }
 
     detachSharedMemory(semaphores);
     if (shmctl(semid, IPC_RMID, NULL) == -1) {
-        handleError("[MAIN] shmctl IPC_RMID (semaforów)", shmid, semid);
+        handleError("[MAIN] Failed to remove shared memory for semaphores", shmid, semid);
     }
 
-    logMessage(LOG_INFO, "[MAIN] Koniec symulacji.");
+    logMessage(LOG_INFO, "[MAIN] Simulation completed successfully.");
     return 0;
-}
-
-void initHiveData(HiveData* hive, int N) {
-    hive->currentBeesInHive = 0;
-    hive->N = N;
-    hive->beesAlive = 0;
 }

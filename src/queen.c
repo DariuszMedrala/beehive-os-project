@@ -7,29 +7,46 @@
 #include <unistd.h>
 #include <sys/prctl.h>
 
+/**
+ * queenWorker:
+ * Implements the queen's behavior in the hive simulation.
+ * The queen periodically lays eggs and spawns new bees.
+ *
+ * Detailed functionality:
+ * 1. Attaches to shared memory for hive data and semaphores.
+ * 2. Enters a loop to lay eggs at specified intervals (T_k).
+ * 3. Uses semaphores to safely update hive data and spawn bee processes.
+ * 4. Checks hive capacity and logs warnings if space is insufficient.
+ * 5. Cleans up resources and detaches from shared memory upon termination.
+ *
+ * @param arg Pointer to QueenArgs containing the queen's configuration and shared resources.
+ */
 void queenWorker(QueenArgs* arg) {
     QueenArgs* queen = arg;
     prctl(PR_SET_NAME, "queen");
 
-    // Dołącz pamięć współdzieloną tylko raz
+    // Attach to shared memory for hive data and semaphores
     queen->hive = (HiveData*)attachSharedMemory(queen->shmid);
     queen->semaphores = (HiveSemaphores*)attachSharedMemory(queen->semid);
     if (queen->hive == NULL || queen->semaphores == NULL) {
-        handleError("[Królowa] attachSharedMemory", -1, queen->semid);
+        handleError("[Queen] attachSharedMemory", -1, queen->semid);
     }
 
     int nextBeeID = queen->hive->N;
 
     while (1) {
-        sleep(queen->T_k);
+        sleep(queen->T_k); // Wait for the next egg-laying interval
 
+        // Lock hive access
         if (sem_wait(&queen->semaphores->hiveSem) == -1) {
-            handleError("[Królowa] sem_wait (hiveSem)", -1, queen->semid);
+            handleError("[Queen] sem_wait (hiveSem)", -1, queen->semid);
         }
 
-        int wolneMiejsce = calculateP(queen->hive->N) - queen->hive->currentBeesInHive;
-        if (wolneMiejsce >= queen->eggsCount && queen->eggsCount < (queen->hive->N - queen->hive->beesAlive)) {
-            logMessage(LOG_INFO, "[Królowa] Składa %d jaja.", queen->eggsCount);
+        // Calculate available space in the hive
+        int freeSpace = calculateP(queen->hive->N) - queen->hive->currentBeesInHive;
+
+        if (freeSpace >= queen->eggsCount && queen->eggsCount < (queen->hive->N - queen->hive->beesAlive)) {
+            logMessage(LOG_INFO, "[Queen] Laying %d eggs.", queen->eggsCount);
 
             for (int i = 0; i < queen->eggsCount; i++) {
                 queen->hive->beesAlive++;
@@ -39,22 +56,24 @@ void queenWorker(QueenArgs* arg) {
 
                 pid_t beePid = fork();
                 if (beePid == 0) {
-                    beeWorker(&beeArgs);
+                    beeWorker(&beeArgs); // Start the bee process
                     exit(EXIT_SUCCESS);
                 } else if (beePid < 0) {
-                    handleError("[Królowa] fork", -1, queen->semid);
+                    handleError("[Queen] fork", -1, queen->semid);
                 }
             }
-            logMessage(LOG_INFO, "[Królowa] Teraz żywych pszczół: %d", queen->hive->beesAlive);
+            logMessage(LOG_INFO, "[Queen] Total living bees: %d", queen->hive->beesAlive);
         } else {
-            logMessage(LOG_WARNING, "[Królowa] Za mało miejsca w ulu (wolne: %d) lub brak miejsca w kolonii.", wolneMiejsce);
+            logMessage(LOG_WARNING, "[Queen] Not enough space in the hive (free: %d) or colony is full.", freeSpace);
         }
 
+        // Unlock hive access
         if (sem_post(&queen->semaphores->hiveSem) == -1) {
-            handleError("[Królowa] sem_post (hiveSem)", -1, queen->semid);
+            handleError("[Queen] sem_post (hiveSem)", -1, queen->semid);
         }
     }
 
+    // Detach from shared memory
     detachSharedMemory(queen->hive);
     detachSharedMemory(queen->semaphores);
     exit(EXIT_SUCCESS);
