@@ -118,19 +118,25 @@ void detachSharedMemory(void* sharedMemory) {
 
 /**
  * handleError:
- * Handles critical errors by logging the message, releasing shared resources, and terminating the program.
+ * Handles critical errors by logging the message, printing the system error message,
+ * releasing shared resources, and terminating the program.
  * 
  * @param message A descriptive error message.
  * @param shmid The shared memory identifier to release (if valid).
  * @param semid The semaphore memory identifier to release (if valid).
  */
 void handleError(const char* message, int shmid, int semid) {
+    // Log the error message with the system error
     logMessage(LOG_ERROR, "%s: %s", message, strerror(errno));
+    
+    // Print the system error message to stderr
+    perror(message);
 
     // Release shared memory if shmid is valid
     if (shmid != -1) {
         if (shmctl(shmid, IPC_RMID, NULL) == -1) {
             logMessage(LOG_ERROR, "Failed to remove shared memory (shmid: %d): %s", shmid, strerror(errno));
+            perror("shmctl IPC_RMID (shared memory)");
         }
     }
 
@@ -138,6 +144,7 @@ void handleError(const char* message, int shmid, int semid) {
     if (semid != -1) {
         if (shmctl(semid, IPC_RMID, NULL) == -1) {
             logMessage(LOG_ERROR, "Failed to remove semaphores (semid: %d): %s", semid, strerror(errno));
+            perror("shmctl IPC_RMID (semaphores)");
         }
     }
 
