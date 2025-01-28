@@ -49,12 +49,12 @@
 /**
  * Minimum time (in seconds) a bee spends outside the hive.
  */
-#define MIN_OUTSIDE_TIME 5
+#define MIN_OUTSIDE_TIME 1
 
 /**
  * Maximum time (in seconds) a bee spends outside the hive.
  */
-#define MAX_OUTSIDE_TIME 10
+#define MAX_OUTSIDE_TIME 3
 /**
  * Console color codes for pretty-printed messages.
  * These can be used to differentiate log levels when printing to the terminal.

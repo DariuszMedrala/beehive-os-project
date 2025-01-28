@@ -43,9 +43,18 @@ void beeWorker(BeeArgs* arg) {
     
         int timeInHive = (rand_r(&seed) % (bee->T_inHive / 2 + 1)) + (bee->T_inHive);
         sleep(timeInHive);
-        bee->startInHive = false;
+
+        
+        if (sem_wait(&bee->semaphores->hiveSem) == -1) {
+        handleError("[Bee] sem_wait (hiveSem)", -1, bee->semid);
+        }
+
         bee->hive->currentBeesInHive--;
         logMessage(LOG_INFO, "[Bee %d] Leaving hive initially. (Bees in hive: %d)", bee->id, bee->hive->currentBeesInHive);
+        if (sem_post(&bee->semaphores->hiveSem) == -1) {
+            handleError("[Bee] sem_post (hiveSem)", -1, bee->semid);
+        }
+         bee->startInHive = false;
     }
 
     // Main lifecycle of the bee
@@ -70,8 +79,22 @@ void beeWorker(BeeArgs* arg) {
         if (sem_wait(&bee->semaphores->hiveSem) == -1) {
             handleError("[Bee] sem_wait (hiveSem) failed", -1, bee->semid);
         }
+        if (bee->hive->currentBeesInHive >= calculateP(bee->hive->N)) {
+            // No space in the hive, release semaphores and wait
+            if (sem_post(&bee->semaphores->hiveSem) == -1) {
+                handleError("[Bee] sem_post (hiveSem)", -1, bee->semid);
+            }
+            if (sem_post(&bee->semaphores->entranceSem[entrance]) == -1) {
+                handleError("[Bee] sem_post (entranceSem)", -1, bee->semid);
+            }
+            if (sem_post(&bee->semaphores->fifoQueue[entrance]) == -1) {
+                handleError("[Bee] sem_post (fifoQueue) failed", -1, bee->semid);
+            }
+            sleep(1); // Wait for a while before retrying
+            continue;
+        }
 
-        usleep(1000000);// Enter the hive
+        usleep(100000);// Enter the hive
         bee->hive->currentBeesInHive++;
         logMessage(LOG_INFO, "[Bee %d] Entering through entrance %d. (Bees in hive: %d)", bee->id, entrance, bee->hive->currentBeesInHive);
 
@@ -105,7 +128,8 @@ void beeWorker(BeeArgs* arg) {
 
         // Simulate time spent outside the hive
         bee->visits++;
-        sleep((rand_r(&seed) % 11) + 10); // Wait outside the hive
+        int sleepTimeOutside = (rand_r(&seed) % (MAX_OUTSIDE_TIME - MIN_OUTSIDE_TIME + 1)) + MIN_OUTSIDE_TIME;
+        sleep(sleepTimeOutside); //Wait outside the hive
     }
 
     // Final steps when the bee "dies"

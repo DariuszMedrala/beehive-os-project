@@ -43,6 +43,7 @@ void queenWorker(QueenArgs* arg) {
         if (sem_wait(&queen->semaphores->hiveSem) == -1) {
             handleError("[Queen] sem_wait (hiveSem) failed", queen->shmid, queen->semid);
         }
+
         // Reap any terminated child processes to prevent zombies
         while (waitpid(-1, NULL, WNOHANG) > 0);
 
@@ -79,7 +80,7 @@ void queenWorker(QueenArgs* arg) {
     }
 
     // Detach from shared memory
-    detachSharedMemory(queen->hive); // Errors will be logged internally
-    detachSharedMemory(queen->semaphores); // Errors will be logged internally
+    detachSharedMemory(queen->hive); 
+    detachSharedMemory(queen->semaphores); 
     exit(EXIT_SUCCESS);
 }

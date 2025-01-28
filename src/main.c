@@ -131,10 +131,16 @@ int main(int argc, char* argv[]) {
     }
 
     // Wait for all bee processes to finish
-    for (int i = 0; i < N; i++) {
-        if (wait(NULL) == -1) {
+    while (1) {
+        pid_t result = wait(NULL);
+        if (result == -1) {
+            if (errno == ECHILD) {
+                // No more child processes
+            break;
+        } else {
             handleError("[MAIN] Failed to wait for bee processes", shmid, semid);
         }
+    }
     }
 
     // Terminate the queen and beekeeper processes
