@@ -29,7 +29,7 @@
 /**
  * Time (in seconds) a bee spends inside the hive during each visit.
  */
-#define T_IN_HIVE 2
+#define T_IN_HIVE 20
 
 /**
  * Maximum number of visits a bee can make before it dies.
@@ -39,12 +39,12 @@
 /**
  * Minimum time (in seconds) a bee waits before entering the hive.
  */
-#define MIN_WAIT_TIME 0.5
+#define MIN_WAIT_TIME 5
 
 /**
  * Maximum time (in seconds) a bee waits before entering the hive.
  */
-#define MAX_WAIT_TIME 1.0
+#define MAX_WAIT_TIME 50
 
 /**
  * Minimum time (in seconds) a bee spends outside the hive.
@@ -54,7 +54,7 @@
 /**
  * Maximum time (in seconds) a bee spends outside the hive.
  */
-#define MAX_OUTSIDE_TIME 3
+#define MAX_OUTSIDE_TIME 60
 /**
  * Console color codes for pretty-printed messages.
  * These can be used to differentiate log levels when printing to the terminal.
@@ -95,6 +95,7 @@ typedef struct {
     int currentBeesInHive;  // Current number of bees inside the hive.
     int N;                  // Initial size of the hive (number of frames).
     int beesAlive;          // Total number of live bees in the colony.
+    int beesWaiting[2];     // Track bees waiting at each entrance
 } HiveData;
 
 /**
