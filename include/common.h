@@ -129,6 +129,29 @@ extern LogConfig logConfig;
 void logMessage(LogLevel level, const char* format, ...);
 
 /**
+ * Initializes shared memory for hive data and returns a pointer to it.
+ * @param N Initial hive size (number of frames).
+ * @param shmid Pointer to store the shared memory ID.
+ * @return Pointer to initialized HiveData.
+ */
+HiveData* initHiveData(int N, int* shmid);
+
+
+/**
+ * Initializes shared memory for semaphores and returns a pointer to it.
+ * @param semid Pointer to store the shared memory ID.
+ * @return Pointer to initialized HiveSemaphores.
+ */
+HiveSemaphores* initHiveSemaphores(int* semid);
+
+/**
+ * Cleans up shared memory and semaphores.
+ * @param shmid Shared memory ID for HiveData.
+ * @param semid Shared memory ID for HiveSemaphores.
+ */
+void cleanupResources(int shmid, int semid);
+
+/**
  * Attaches to a shared memory segment.
  *
  * @param shmid The shared memory identifier.
@@ -160,5 +183,8 @@ void handleError(const char* message, int shmid, int semid);
  * @return The maximum number of bees allowed in the hive.
  */
 int calculateP(int N);
+
+
+
 
 #endif

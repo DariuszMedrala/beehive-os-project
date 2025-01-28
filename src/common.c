@@ -12,6 +12,25 @@ LogConfig logConfig = {
     .fileLogLevel = LOG_DEBUG     ///< Log all levels to the file.
 };
 
+
+
+HiveData* initHiveData(int N, int* shmid) {
+    *shmid = shmget(IPC_PRIVATE, sizeof(HiveData), IPC_CREAT | 0666);
+    if (*shmid == -1) {
+        handleError("[INIT] Failed to create shared memory for HiveData", -1, -1);
+    }
+
+    HiveData* hive = (HiveData*)attachSharedMemory(*shmid);
+    if (hive == NULL) {
+        handleError("[INIT] Failed to attach shared memory for HiveData", *shmid, -1);
+    }
+
+    hive->currentBeesInHive = 0;
+    hive->N = N;
+    hive->beesAlive = N;
+    return hive;
+}
+
 /**
  * calculateP:
  * Calculates the maximum number of bees that can fit inside the hive at any given time.
@@ -129,6 +148,45 @@ void detachSharedMemory(void* sharedMemory) {
     }
 }
 
+HiveSemaphores* initHiveSemaphores(int* semid) {
+    *semid = shmget(IPC_PRIVATE, sizeof(HiveSemaphores), IPC_CREAT | 0666);
+    if (*semid == -1) {
+        handleError("[INIT] Failed to create shared memory for HiveSemaphores", -1, -1);
+    }
+
+    HiveSemaphores* semaphores = (HiveSemaphores*)attachSharedMemory(*semid);
+    if (semaphores == NULL) {
+        handleError("[INIT] Failed to attach shared memory for HiveSemaphores", -1, *semid);
+    }
+
+    // Initialize semaphores
+    if (sem_init(&semaphores->hiveSem, 1, 1) == -1) {
+        handleError("[INIT] Failed to initialize hiveSem", -1, *semid);
+    }
+
+    for (int i = 0; i < 2; i++) {
+        if (sem_init(&semaphores->entranceSem[i], 1, 1) == -1) {
+            handleError("[INIT] Failed to initialize entranceSem", -1, *semid);
+        }
+        if (sem_init(&semaphores->fifoQueue[i], 1, 1) == -1) {
+            handleError("[INIT] Failed to initialize fifoQueue", -1, *semid);
+        }
+    }
+    return semaphores;
+}
+
+void cleanupResources(int shmid, int semid) {
+    // Detach and remove shared memory for HiveData
+    if (shmctl(shmid, IPC_RMID, NULL) == -1) {
+        logMessage(LOG_WARNING, "[CLEANUP] Failed to remove shared memory for HiveData.");
+    }
+
+    // Detach and remove shared memory for semaphores
+    if (shmctl(semid, IPC_RMID, NULL) == -1) {
+        logMessage(LOG_WARNING, "[CLEANUP] Failed to remove shared memory for semaphores.");
+    }
+}
+
 /**
  * handleError:
  * Handles critical errors by logging the message, printing the system error message,
@@ -162,4 +220,5 @@ void handleError(const char* message, int shmid, int semid) {
     }
 
     exit(EXIT_FAILURE);
+ 
 }
