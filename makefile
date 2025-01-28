@@ -1,6 +1,7 @@
 # Compiler and flags
 CC = gcc
 CFLAGS = -Iinclude -Wall -Wextra -g
+LDFLAGS = -pthread
 
 # Directories
 SRC_DIR = src
@@ -14,24 +15,20 @@ TARGET = beehive_simulation
 SRCS = $(wildcard $(SRC_DIR)/*.c)
 OBJS = $(patsubst $(SRC_DIR)/%.c, $(BUILD_DIR)/%.o, $(SRCS))
 
-# Default target
+# Default rule
 all: $(TARGET)
 
-# Linking step
+# Linking
 $(TARGET): $(OBJS)
-	$(CC) $(OBJS) -o $@
+	$(CC) $(OBJS) -o $@ $(LDFLAGS)
 
-# Compilation step
-$(BUILD_DIR)/%.o: $(SRC_DIR)/%.c | $(BUILD_DIR)
+# Compilation
+$(BUILD_DIR)/%.o: $(SRC_DIR)/%.c
+	@mkdir -p $(BUILD_DIR)
 	$(CC) $(CFLAGS) -c $< -o $@
 
-# Create build directory if it doesn't exist
-$(BUILD_DIR):
-	mkdir -p $(BUILD_DIR)
-
-# Clean build artifacts
+# Clean up
 clean:
 	rm -rf $(BUILD_DIR) $(TARGET)
 
-# PHONY targets
 .PHONY: all clean
