@@ -104,6 +104,7 @@ typedef struct {
 typedef struct {
     sem_t hiveSem;          // Semaphore for general hive access control.
     sem_t entranceSem[2];   // Semaphores for each hive entrance.
+    sem_t fifoQueue[2];     // FIFO queue semaphores for each entrance.
 } HiveSemaphores;
 
 /**

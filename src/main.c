@@ -92,6 +92,10 @@ int main(int argc, char* argv[]) {
         if (sem_init(&semaphores->entranceSem[i], 1, 1) == -1) {
             handleError("[MAIN] Failed to initialize entranceSem", shmid, semid);
         }
+
+        if (sem_init(&semaphores->fifoQueue[i], 1, 1) == -1) { // Initialize FIFO queue semaphores
+            handleError("[MAIN] Failed to initialize fifoQueue", shmid, semid);
+        }
     }
 
     // Spawn the queen process
