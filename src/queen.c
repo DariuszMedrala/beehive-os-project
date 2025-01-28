@@ -12,6 +12,8 @@
  * Implements the queen's behavior in the hive simulation.
  * The queen periodically lays eggs and spawns new bees.
  *
+ * Includes detailed error handling for semaphore and memory operations.
+ *
  * Detailed functionality:
  * 1. Attaches to shared memory for hive data and semaphores.
  * 2. Enters a loop to lay eggs at specified intervals (T_k).
@@ -29,7 +31,7 @@ void queenWorker(QueenArgs* arg) {
     queen->hive = (HiveData*)attachSharedMemory(queen->shmid);
     queen->semaphores = (HiveSemaphores*)attachSharedMemory(queen->semid);
     if (queen->hive == NULL || queen->semaphores == NULL) {
-        handleError("[Queen] attachSharedMemory", -1, queen->semid);
+        handleError("[Queen] attachSharedMemory failed", queen->shmid, queen->semid);
     }
 
     int nextBeeID = queen->hive->N;
@@ -39,7 +41,7 @@ void queenWorker(QueenArgs* arg) {
 
         // Lock hive access
         if (sem_wait(&queen->semaphores->hiveSem) == -1) {
-            handleError("[Queen] sem_wait (hiveSem)", -1, queen->semid);
+            handleError("[Queen] sem_wait (hiveSem) failed", queen->shmid, queen->semid);
         }
 
         // Calculate available space in the hive
@@ -53,14 +55,14 @@ void queenWorker(QueenArgs* arg) {
                 queen->hive->beesAlive++;
                 queen->hive->currentBeesInHive++;
 
-                BeeArgs beeArgs = {nextBeeID++, 0, MAX_BEE_VISITS, T_IN_HIVE, queen->hive, queen->semaphores, false, queen->semid, queen->shmid};
+                BeeArgs beeArgs = {nextBeeID++, 0, MAX_BEE_VISITS, T_IN_HIVE, queen->hive, queen->semaphores, true, queen->semid, queen->shmid};
 
                 pid_t beePid = fork();
                 if (beePid == 0) {
                     beeWorker(&beeArgs); // Start the bee process
                     exit(EXIT_SUCCESS);
                 } else if (beePid < 0) {
-                    handleError("[Queen] fork", -1, queen->semid);
+                    handleError("[Queen] fork failed", queen->shmid, queen->semid);
                 }
             }
             logMessage(LOG_INFO, "[Queen] Total living bees: %d", queen->hive->beesAlive);
@@ -70,12 +72,12 @@ void queenWorker(QueenArgs* arg) {
 
         // Unlock hive access
         if (sem_post(&queen->semaphores->hiveSem) == -1) {
-            handleError("[Queen] sem_post (hiveSem)", -1, queen->semid);
+            handleError("[Queen] sem_post (hiveSem) failed", queen->shmid, queen->semid);
         }
     }
 
     // Detach from shared memory
-    detachSharedMemory(queen->hive);
-    detachSharedMemory(queen->semaphores);
+    detachSharedMemory(queen->hive); // Errors will be logged internally
+    detachSharedMemory(queen->semaphores); // Errors will be logged internally
     exit(EXIT_SUCCESS);
 }

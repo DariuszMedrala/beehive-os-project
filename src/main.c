@@ -11,7 +11,8 @@
 
 /**
  * Initializes the hive data with default values.
- * 
+ * Ensures that the hive is properly set up before simulation starts.
+ *
  * @param hive Pointer to the HiveData structure to initialize.
  * @param N Initial size of the hive (number of frames).
  */
@@ -23,14 +24,16 @@ void initHiveData(HiveData* hive, int N) {
 
 /**
  * Main entry point of the hive simulation program.
- * 
+ *
  * Detailed functionality:
  * 1. Validates command-line arguments for hive size (N), queen's egg-laying interval (T_k), and egg count per cycle.
  * 2. Creates shared memory segments for hive data and semaphores.
  * 3. Initializes hive data and semaphores.
  * 4. Spawns the queen, beekeeper, and initial bee processes.
  * 5. Waits for all bee processes to complete and cleans up resources.
- * 
+ *
+ * Includes error handling for shared memory, semaphore initialization, and process creation.
+ *
  * @param argc Number of command-line arguments.
  * @param argv Array of command-line arguments.
  * @return 0 on success, or 1 on failure.
@@ -139,14 +142,14 @@ int main(int argc, char* argv[]) {
     }
 
     // Cleanup shared memory and semaphores
-    detachSharedMemory(hive);
+    detachSharedMemory(hive); // Errors will be logged internally
     if (shmctl(shmid, IPC_RMID, NULL) == -1) {
-        handleError("[MAIN] Failed to remove shared memory for HiveData", shmid, semid);
+        logMessage(LOG_WARNING, "[MAIN] Failed to remove shared memory for HiveData.");
     }
 
-    detachSharedMemory(semaphores);
+    detachSharedMemory(semaphores); // Errors will be logged internally
     if (shmctl(semid, IPC_RMID, NULL) == -1) {
-        handleError("[MAIN] Failed to remove shared memory for semaphores", shmid, semid);
+        logMessage(LOG_WARNING, "[MAIN] Failed to remove shared memory for semaphores.");
     }
 
     logMessage(LOG_INFO, "[MAIN] Simulation completed successfully.");

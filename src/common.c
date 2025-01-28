@@ -15,17 +15,23 @@ LogConfig logConfig = {
 /**
  * calculateP:
  * Calculates the maximum number of bees that can fit inside the hive at any given time.
+ * Includes validation to ensure N is valid.
  * 
  * @param N The initial size of the hive (number of frames).
  * @return The maximum number of bees allowed in the hive.
  */
 int calculateP(int N) {
+    if (N <= 0) {
+        logMessage(LOG_ERROR, "[calculateP] Invalid hive size N = %d. Must be greater than 0.", N);
+        return 0;
+    }
     return (N / 2) - 1;
 }
 
 /**
  * logMessage:
  * Logs a formatted message to the console and/or file, depending on the global log configuration.
+ * Includes error handling for file operations.
  * 
  * @param level The severity level of the message.
  * @param format The formatted string, followed by optional arguments.
@@ -68,14 +74,17 @@ void logMessage(LogLevel level, const char* format, ...) {
 
     // Log to file if enabled and level meets the threshold
     if (logConfig.logToFile && level >= logConfig.fileLogLevel) {
-        FILE* logFile = fopen("beehive.log", "w"); // Zmiana z "a" na "w"
+        FILE* logFile = fopen("beehive.log", "a");
         if (!logFile) {
-            perror("Failed to open log file");
+            perror("[logMessage] Failed to open log file");
             return;
         }
 
         time_t now = time(NULL);
         struct tm* t = localtime(&now);
+        if (!t) {
+            handleError("[logMessage] localtime failed", -1, -1);
+        }
         fprintf(logFile, "[%02d-%02d-%04d %02d:%02d:%02d] [%s] ",
                 t->tm_mday, t->tm_mon + 1, t->tm_year + 1900,
                 t->tm_hour, t->tm_min, t->tm_sec, levelStr);
@@ -98,7 +107,7 @@ void logMessage(LogLevel level, const char* format, ...) {
 void* attachSharedMemory(int shmid) {
     void* sharedMemory = shmat(shmid, NULL, 0);
     if (sharedMemory == (void*)-1) {
-        handleError("shmat", shmid, -1);
+        handleError("[attachSharedMemory] shmat failed", shmid, -1);
     }
     return sharedMemory;
 }
@@ -112,7 +121,7 @@ void* attachSharedMemory(int shmid) {
  */
 void detachSharedMemory(void* sharedMemory) {
     if (shmdt(sharedMemory) == -1) {
-        handleError("shmdt", -1, -1);
+        handleError("[detachSharedMemory] shmdt failed", -1, -1);
     }
 }
 
@@ -135,7 +144,7 @@ void handleError(const char* message, int shmid, int semid) {
     // Release shared memory if shmid is valid
     if (shmid != -1) {
         if (shmctl(shmid, IPC_RMID, NULL) == -1) {
-            logMessage(LOG_ERROR, "Failed to remove shared memory (shmid: %d): %s", shmid, strerror(errno));
+            logMessage(LOG_ERROR, "[handleError] Failed to remove shared memory (shmid: %d): %s", shmid, strerror(errno));
             perror("shmctl IPC_RMID (shared memory)");
         }
     }
@@ -143,7 +152,7 @@ void handleError(const char* message, int shmid, int semid) {
     // Release semaphores if semid is valid
     if (semid != -1) {
         if (shmctl(semid, IPC_RMID, NULL) == -1) {
-            logMessage(LOG_ERROR, "Failed to remove semaphores (semid: %d): %s", semid, strerror(errno));
+            logMessage(LOG_ERROR, "[handleError] Failed to remove semaphores (semid: %d): %s", semid, strerror(errno));
             perror("shmctl IPC_RMID (semaphores)");
         }
     }

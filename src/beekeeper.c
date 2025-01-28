@@ -16,12 +16,13 @@ static BeekeeperArgs* gBeekeeperArgs = NULL;
 /**
  * Helper function to retrieve hive data and semaphores for signal handling.
  * Ensures the beekeeper process can safely modify the hive state in response to signals.
- * 
+ *
  * @param semaphores Pointer to store the semaphore structure reference.
- * @return A pointer to the hive data structure.
+ * @return A pointer to the hive data structure, or NULL if gBeekeeperArgs is not initialized.
  */
 HiveData* getHiveDataAndSemaphores(HiveSemaphores** semaphores) {
     if (gBeekeeperArgs == NULL) {
+        logMessage(LOG_WARNING, "[Beekeeper] gBeekeeperArgs is NULL during signal handling.");
         return NULL;
     }
 
@@ -32,7 +33,8 @@ HiveData* getHiveDataAndSemaphores(HiveSemaphores** semaphores) {
 /**
  * Signal handler to add frames to the hive.
  * Doubles the hive's capacity (N) when SIGUSR1 is received.
- * 
+ * Includes error handling for semaphore operations.
+ *
  * @param signum Signal number (unused).
  */
 void handleSignalAddFrames(int signum) {
@@ -57,7 +59,8 @@ void handleSignalAddFrames(int signum) {
 /**
  * Signal handler to remove frames from the hive.
  * Halves the hive's capacity (N) when SIGUSR2 is received.
- * 
+ * Includes error handling for semaphore operations.
+ *
  * @param signum Signal number (unused).
  */
 void handleSignalRemoveFrames(int signum) {
@@ -82,7 +85,8 @@ void handleSignalRemoveFrames(int signum) {
 /**
  * Cleanup function to release resources and terminate the beekeeper process.
  * Triggered by SIGINT (e.g., Ctrl+C).
- * 
+ * Includes error handling for resource cleanup operations.
+ *
  * @param signum Signal number (unused).
  */
 void cleanup(int signum) {
@@ -92,29 +96,32 @@ void cleanup(int signum) {
     HiveData* hive = getHiveDataAndSemaphores(&semaphores);
     if (hive == NULL) return;
 
+    // Attempt to release shared memory and semaphores; log warnings on failure
     if (shmctl(gBeekeeperArgs->shmid, IPC_RMID, NULL) == -1) {
-        handleError("[Beekeeper] shmctl IPC_RMID (HiveData)", gBeekeeperArgs->shmid, gBeekeeperArgs->semid);
+        logMessage(LOG_WARNING, "[Beekeeper] Failed to remove shared memory for HiveData.");
     }
 
     if (shmctl(gBeekeeperArgs->semid, IPC_RMID, NULL) == -1) {
-        handleError("[Beekeeper] shmctl IPC_RMID (semaphores)", gBeekeeperArgs->shmid, gBeekeeperArgs->semid);
+        logMessage(LOG_WARNING, "[Beekeeper] Failed to remove shared memory for semaphores.");
     }
 
     detachSharedMemory(semaphores);
     detachSharedMemory(hive);
+    logMessage(LOG_INFO, "[Beekeeper] Cleanup complete. Exiting process.");
     exit(EXIT_SUCCESS);
 }
 
 /**
  * beekeeperWorker:
  * Implements the main behavior of the beekeeper process.
- * 
+ * Includes detailed error handling for memory and semaphore operations.
+ *
  * Detailed functionality:
  * 1. Attaches to shared memory for hive data and semaphores.
  * 2. Sets up signal handlers for dynamic hive management (SIGUSR1, SIGUSR2, SIGINT).
  * 3. Waits in an infinite loop to handle incoming signals.
  * 4. Cleans up shared resources upon termination.
- * 
+ *
  * @param arg Pointer to BeekeeperArgs containing shared memory and semaphore details.
  */
 void beekeeperWorker(BeekeeperArgs* arg) {
@@ -146,6 +153,8 @@ void beekeeperWorker(BeekeeperArgs* arg) {
     if (sigaction(SIGINT, &sa3, NULL) == -1) {
         handleError("[Beekeeper] sigaction(SIGINT)", gBeekeeperArgs->shmid, gBeekeeperArgs->semid);
     }
+
+    logMessage(LOG_INFO, "[Beekeeper] Process started and waiting for signals.");
 
     // Infinite loop to keep the beekeeper process running
     while (1) {
