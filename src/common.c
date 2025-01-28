@@ -65,32 +65,36 @@ void logMessage(LogLevel level, const char* format, ...) {
             break;
     }
 
+    // Prepare the common log message
+    char buffer[1024];
+    vsnprintf(buffer, sizeof(buffer), format, args);
+
     // Log to console if enabled and level meets the threshold
     if (logConfig.logToConsole && level >= logConfig.consoleLogLevel) {
-        printf("%s[%s] ", color, levelStr);
-        vprintf(format, args);
-        printf("%s\n", RESET);
+        printf("%s[%s] %s%s\n", color, levelStr, buffer, RESET);
     }
 
     // Log to file if enabled and level meets the threshold
     if (logConfig.logToFile && level >= logConfig.fileLogLevel) {
-        FILE* logFile = fopen("beehive.log", "w");
+        FILE* logFile = fopen("beehive.log", "a");
         if (!logFile) {
+            // If the log file cannot be opened, print an error to stderr
             perror("[logMessage] Failed to open log file");
-            return;
+        } else {
+            // Get the current time and format the timestamp
+            time_t now = time(NULL);
+            struct tm* t = localtime(&now);
+            if (t) {
+                // Write the log message with a timestamp
+                fprintf(logFile, "[%02d-%02d-%04d %02d:%02d:%02d] [%s] %s\n",
+                        t->tm_mday, t->tm_mon + 1, t->tm_year + 1900,
+                        t->tm_hour, t->tm_min, t->tm_sec, levelStr, buffer);
+            } else {
+                // If time retrieval fails, log without a timestamp
+                fprintf(logFile, "[Time unavailable] [%s] %s\n", levelStr, buffer);
+            }
+            fclose(logFile); // Close the log file
         }
-
-        time_t now = time(NULL);
-        struct tm* t = localtime(&now);
-        if (!t) {
-            handleError("[logMessage] localtime failed", -1, -1);
-        }
-        fprintf(logFile, "[%02d-%02d-%04d %02d:%02d:%02d] [%s] ",
-                t->tm_mday, t->tm_mon + 1, t->tm_year + 1900,
-                t->tm_hour, t->tm_min, t->tm_sec, levelStr);
-        vfprintf(logFile, format, args);
-        fprintf(logFile, "\n");
-        fclose(logFile);
     }
 
     va_end(args);

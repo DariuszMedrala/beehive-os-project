@@ -1,1 +1,67 @@
-[28-01-2025 13:58:03] [INFO] [Beekeeper] Cleanup complete. Exiting process.
+[28-01-2025 14:10:38] [INFO] [Beekeeper] Process started and waiting for signals.
+[28-01-2025 14:10:38] [INFO] [Bee 0] Entering through entrance 0. (Bees in hive: 1)
+[28-01-2025 14:10:38] [INFO] [Bee 5] Entering through entrance 0. (Bees in hive: 2)
+[28-01-2025 14:10:38] [INFO] [Bee 6] Entering through entrance 0. (Bees in hive: 3)
+[28-01-2025 14:10:39] [INFO] [Bee 1] Entering through entrance 1. (Bees in hive: 4)
+[28-01-2025 14:10:40] [WARNING] [Queen] Not enough space in the hive (free: 0) or hive size limit reached (alive: 10, max: 10).
+[28-01-2025 14:10:40] [INFO] [Bee 0] Leaving hive. (Bees in hive: 3)
+[28-01-2025 14:10:40] [INFO] [Bee 5] Leaving hive. (Bees in hive: 2)
+[28-01-2025 14:10:40] [INFO] [Bee 6] Leaving hive. (Bees in hive: 1)
+[28-01-2025 14:10:41] [INFO] [Bee 3] Entering through entrance 1. (Bees in hive: 2)
+[28-01-2025 14:10:41] [INFO] [Bee 2] Entering through entrance 1. (Bees in hive: 3)
+[28-01-2025 14:10:41] [INFO] [Bee 7] Entering through entrance 1. (Bees in hive: 4)
+[28-01-2025 14:10:42] [INFO] [Bee 1] Leaving hive. (Bees in hive: 3)
+[28-01-2025 14:10:42] [INFO] [Bee 4] Entering through entrance 1. (Bees in hive: 4)
+[28-01-2025 14:10:42] [WARNING] [Queen] Not enough space in the hive (free: 0) or hive size limit reached (alive: 10, max: 10).
+[28-01-2025 14:10:43] [INFO] [Bee 2] Leaving hive. (Bees in hive: 3)
+[28-01-2025 14:10:43] [INFO] [Bee 7] Leaving hive. (Bees in hive: 2)
+[28-01-2025 14:10:43] [INFO] [Bee 8] Entering through entrance 1. (Bees in hive: 3)
+[28-01-2025 14:10:43] [INFO] [Bee 9] Entering through entrance 1. (Bees in hive: 4)
+[28-01-2025 14:10:44] [INFO] [Bee 3] Leaving hive. (Bees in hive: 3)
+[28-01-2025 14:10:44] [WARNING] [Queen] Not enough space in the hive (free: 1) or hive size limit reached (alive: 10, max: 10).
+[28-01-2025 14:10:44] [INFO] [Bee 0] Entering through entrance 1. (Bees in hive: 4)
+[28-01-2025 14:10:45] [INFO] [Bee 4] Leaving hive. (Bees in hive: 3)
+[28-01-2025 14:10:45] [INFO] [Bee 5] Entering through entrance 0. (Bees in hive: 4)
+[28-01-2025 14:10:46] [INFO] [Bee 8] Leaving hive. (Bees in hive: 3)
+[28-01-2025 14:10:46] [WARNING] [Queen] Not enough space in the hive (free: 1) or hive size limit reached (alive: 10, max: 10).
+[28-01-2025 14:10:46] [INFO] [Bee 9] Leaving hive. (Bees in hive: 2)
+[28-01-2025 14:10:46] [INFO] [Bee 0] Leaving hive. (Bees in hive: 1)
+[28-01-2025 14:10:47] [INFO] [Bee 6] Entering through entrance 1. (Bees in hive: 2)
+[28-01-2025 14:10:47] [INFO] [Bee 1] Entering through entrance 1. (Bees in hive: 3)
+[28-01-2025 14:10:47] [INFO] [Bee 3] Entering through entrance 0. (Bees in hive: 4)
+[28-01-2025 14:10:48] [WARNING] [Queen] Not enough space in the hive (free: 0) or hive size limit reached (alive: 10, max: 10).
+[28-01-2025 14:10:48] [INFO] [Bee 5] Leaving hive. (Bees in hive: 3)
+[28-01-2025 14:10:49] [INFO] [Bee 6] Leaving hive. (Bees in hive: 2)
+[28-01-2025 14:10:49] [INFO] [Bee 1] Leaving hive. (Bees in hive: 1)
+[28-01-2025 14:10:49] [INFO] [Bee 2] Entering through entrance 0. (Bees in hive: 2)
+[28-01-2025 14:10:49] [INFO] [Bee 7] Entering through entrance 0. (Bees in hive: 3)
+[28-01-2025 14:10:49] [INFO] [Bee 4] Entering through entrance 0. (Bees in hive: 4)
+[28-01-2025 14:10:50] [INFO] [Bee 3] Leaving hive. (Bees in hive: 3)
+[28-01-2025 14:10:50] [INFO] [Bee 8] Entering through entrance 1. (Bees in hive: 4)
+[28-01-2025 14:10:50] [WARNING] [Queen] Not enough space in the hive (free: 0) or hive size limit reached (alive: 10, max: 10).
+[28-01-2025 14:10:54] [INFO] [Bee 8] Leaving hive. (Bees in hive: 3)
+[28-01-2025 14:10:54] [INFO] [Bee 4] Leaving hive. (Bees in hive: 2)
+[28-01-2025 14:10:54] [INFO] [Bee 7] Leaving hive. (Bees in hive: 1)
+[28-01-2025 14:10:54] [INFO] [Bee 6] Entering through entrance 0. (Bees in hive: 2)
+[28-01-2025 14:10:54] [INFO] [Bee 5] Entering through entrance 1. (Bees in hive: 3)
+[28-01-2025 14:10:54] [INFO] [Bee 2] Leaving hive. (Bees in hive: 2)
+[28-01-2025 14:10:54] [WARNING] [Queen] Not enough space in the hive (free: 2) or hive size limit reached (alive: 10, max: 10).
+[28-01-2025 14:10:54] [INFO] [Bee 1] Entering through entrance 0. (Bees in hive: 3)
+[28-01-2025 14:10:55] [INFO] [Bee 3] Entering through entrance 1. (Bees in hive: 4)
+[28-01-2025 14:10:56] [INFO] [Bee 5] Leaving hive. (Bees in hive: 3)
+[28-01-2025 14:10:56] [WARNING] [Queen] Not enough space in the hive (free: 1) or hive size limit reached (alive: 10, max: 10).
+[28-01-2025 14:10:57] [INFO] [Bee 4] Entering through entrance 1. (Bees in hive: 4)
+[28-01-2025 14:10:57] [INFO] [Bee 6] Leaving hive. (Bees in hive: 3)
+[28-01-2025 14:10:57] [INFO] [Bee 7] Entering through entrance 0. (Bees in hive: 4)
+[28-01-2025 14:10:57] [INFO] [Bee 1] Leaving hive. (Bees in hive: 3)
+[28-01-2025 14:10:58] [INFO] [Bee 3] Leaving hive. (Bees in hive: 2)
+[28-01-2025 14:10:58] [INFO] [Bee 6] Dying. (Remaining bees: 9)
+[28-01-2025 14:10:58] [INFO] [Bee 0] Entering through entrance 0. (Bees in hive: 3)
+[28-01-2025 14:10:58] [INFO] [Queen] Laying 1 eggs.
+[28-01-2025 14:10:58] [INFO] [Queen] Total living bees: 10
+[28-01-2025 14:10:58] [INFO] [Bee 10] Starting in the hive.
+[28-01-2025 14:10:58] [INFO] [Bee 5] Dying. (Remaining bees: 9)
+[28-01-2025 14:10:58] [INFO] [Bee 1] Dying. (Remaining bees: 8)
+[28-01-2025 14:10:59] [INFO] [Bee 4] Leaving hive. (Bees in hive: 3)
+[28-01-2025 14:10:59] [INFO] [Bee 2] Entering through entrance 1. (Bees in hive: 4)
+[28-01-2025 14:11:00] [INFO] [Beekeeper] Cleanup complete. Exiting process.
