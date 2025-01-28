@@ -50,6 +50,12 @@ int main(int argc, char* argv[]) {
         return 1;
     }
 
+    // Ensure the number of initial bees does not exceed MAX_BEES
+    if (N > MAX_BEES) {
+        logMessage(LOG_WARNING, "[MAIN] Initial hive size (%d) exceeds MAX_BEES (%d). Setting N to %d.", N, MAX_BEES, MAX_BEES);
+        N = MAX_BEES;
+    }
+
     // Create shared memory for hive data
     int shmid = shmget(IPC_PRIVATE, sizeof(HiveData), IPC_CREAT | 0666);
     if (shmid == -1) {
@@ -88,7 +94,7 @@ int main(int argc, char* argv[]) {
     // Spawn the queen process
     pid_t queenPid = fork();
     if (queenPid == 0) {
-        QueenArgs queenArgs = {T_k, eggsCount, NULL, NULL, semid, shmid};
+        QueenArgs queenArgs = {T_k, eggsCount, hive, semaphores, semid, shmid};
         queenWorker(&queenArgs);
         exit(EXIT_SUCCESS);
     } else if (queenPid < 0) {
@@ -98,7 +104,7 @@ int main(int argc, char* argv[]) {
     // Spawn the beekeeper process
     pid_t beekeeperPid = fork();
     if (beekeeperPid == 0) {
-        BeekeeperArgs keeperArgs = {NULL, NULL, semid, shmid};
+        BeekeeperArgs keeperArgs = {hive, semaphores, semid, shmid};
         beekeeperWorker(&keeperArgs);
         exit(EXIT_SUCCESS);
     } else if (beekeeperPid < 0) {
@@ -109,7 +115,7 @@ int main(int argc, char* argv[]) {
     for (int i = 0; i < N; i++) {
         pid_t beePid = fork();
         if (beePid == 0) {
-            BeeArgs beeArgs = {i, 0, 3, 10, NULL, NULL, false, semid, shmid};
+            BeeArgs beeArgs = {i, 0, MAX_BEE_VISITS, T_IN_HIVE, hive, semaphores, false, semid, shmid};
             beeWorker(&beeArgs);
             exit(EXIT_SUCCESS);
         } else if (beePid < 0) {

@@ -20,15 +20,41 @@
 #include <semaphore.h>
 #include <stdarg.h>
 
-
-
-
 /**
  * Maximum allowed bees in the hive.
  * This constant is used to limit the number of bees that can exist simultaneously.
  */
 #define MAX_BEES 1000
 
+/**
+ * Time (in seconds) a bee spends inside the hive during each visit.
+ */
+#define T_IN_HIVE 10
+
+/**
+ * Maximum number of visits a bee can make before it dies.
+ */
+#define MAX_BEE_VISITS 3
+
+/**
+ * Minimum time (in seconds) a bee waits before entering the hive.
+ */
+#define MIN_WAIT_TIME 0.5
+
+/**
+ * Maximum time (in seconds) a bee waits before entering the hive.
+ */
+#define MAX_WAIT_TIME 1.0
+
+/**
+ * Minimum time (in seconds) a bee spends outside the hive.
+ */
+#define MIN_OUTSIDE_TIME 10
+
+/**
+ * Maximum time (in seconds) a bee spends outside the hive.
+ */
+#define MAX_OUTSIDE_TIME 20
 
 /**
  * Console color codes for pretty-printed messages.

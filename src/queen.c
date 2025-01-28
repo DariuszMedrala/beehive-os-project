@@ -52,7 +52,7 @@ void queenWorker(QueenArgs* arg) {
                 queen->hive->beesAlive++;
                 queen->hive->currentBeesInHive++;
 
-                BeeArgs beeArgs = {nextBeeID++, 0, 3, 10, queen->hive, queen->semaphores, false, queen->semid, queen->shmid};
+                BeeArgs beeArgs = {nextBeeID++, 0, MAX_BEE_VISITS, T_IN_HIVE, queen->hive, queen->semaphores, false, queen->semid, queen->shmid};
 
                 pid_t beePid = fork();
                 if (beePid == 0) {

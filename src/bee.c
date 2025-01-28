@@ -18,6 +18,13 @@
  * 
  * @param arg Pointer to BeeArgs containing the bee's configuration and shared resources.
  */
+#include "bee.h"
+#include <sys/types.h>
+#include <sys/wait.h>
+#include <unistd.h>
+#include <semaphore.h>
+#include <sys/prctl.h>
+
 void beeWorker(BeeArgs* arg) {
     BeeArgs* bee = arg;
     char bee_name[16];
@@ -31,17 +38,12 @@ void beeWorker(BeeArgs* arg) {
         handleError("[Bee] attachSharedMemory", -1, bee->semid);
     }
 
-    unsigned int ziarno = time(NULL) + getpid();
-    if (ziarno == 0) {
-        handleError("[Bee] rand_r seed initialization", -1, bee->semid);
-    }
-
-    double waitTime = 0.5 + (rand_r(&ziarno) % 501) / 1000.0;
-
-    unsigned int seed = time(NULL) + bee->id;
+    unsigned int seed = time(NULL) + getpid();
     if (seed == 0) {
         handleError("[Bee] rand_r seed initialization", -1, bee->semid);
     }
+
+    double waitTime = MIN_WAIT_TIME + (rand_r(&seed) % (int)((MAX_WAIT_TIME - MIN_WAIT_TIME) * 1000)) / 1000.0;
 
     if (bee->startInHive) {
         int entrance = rand_r(&seed) % 2;
@@ -67,7 +69,7 @@ void beeWorker(BeeArgs* arg) {
         bee->startInHive = false;
     }
 
-    while (bee->visits < bee->maxVisits) {
+    while (bee->visits < MAX_BEE_VISITS) {
         int entrance = rand_r(&seed) % 2;
 
         // Check if the entrance is free
@@ -112,7 +114,7 @@ void beeWorker(BeeArgs* arg) {
             handleError("[Bee] sem_post (entranceSem)", -1, bee->semid);
         }
 
-        int timeInHive = (rand_r(&seed) % (bee->T_inHive / 2 + 1)) + (bee->T_inHive);
+        int timeInHive = (rand_r(&seed) % (T_IN_HIVE / 2 + 1)) + T_IN_HIVE;
         unsigned int remainingSleep = sleep(timeInHive);
 
         if (remainingSleep > 0) {
@@ -138,7 +140,7 @@ void beeWorker(BeeArgs* arg) {
         }
 
         bee->visits++;
-        int outsideTime = (rand_r(&seed) % 11) + 10;
+        int outsideTime = (rand_r(&seed) % (MAX_OUTSIDE_TIME - MIN_OUTSIDE_TIME + 1)) + MIN_OUTSIDE_TIME;
         remainingSleep = sleep(outsideTime);
         if (remainingSleep > 0) {
             handleError("[Bee] sleep interrupted", -1, bee->semid);
