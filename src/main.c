@@ -18,7 +18,7 @@
 void initHiveData(HiveData* hive, int N) {
     hive->currentBeesInHive = 0;
     hive->N = N;
-    hive->beesAlive = 0;
+    hive->beesAlive = N;
 }
 
 /**

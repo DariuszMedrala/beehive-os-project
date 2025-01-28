@@ -45,7 +45,8 @@ void queenWorker(QueenArgs* arg) {
         // Calculate available space in the hive
         int freeSpace = calculateP(queen->hive->N) - queen->hive->currentBeesInHive;
 
-        if (freeSpace >= queen->eggsCount && queen->eggsCount < (queen->hive->N - queen->hive->beesAlive)) {
+        // Check if there is enough space and the total bee count does not exceed hive size N
+        if (freeSpace >= queen->eggsCount && (queen->hive->beesAlive + queen->eggsCount) <= queen->hive->N) {
             logMessage(LOG_INFO, "[Queen] Laying %d eggs.", queen->eggsCount);
 
             for (int i = 0; i < queen->eggsCount; i++) {
@@ -64,7 +65,7 @@ void queenWorker(QueenArgs* arg) {
             }
             logMessage(LOG_INFO, "[Queen] Total living bees: %d", queen->hive->beesAlive);
         } else {
-            logMessage(LOG_WARNING, "[Queen] Not enough space in the hive (free: %d) or colony is full.", freeSpace);
+            logMessage(LOG_WARNING, "[Queen] Not enough space in the hive (free: %d) or hive size limit reached (alive: %d, max: %d).", freeSpace, queen->hive->beesAlive, queen->hive->N);
         }
 
         // Unlock hive access

@@ -29,7 +29,7 @@
 /**
  * Time (in seconds) a bee spends inside the hive during each visit.
  */
-#define T_IN_HIVE 10
+#define T_IN_HIVE 2
 
 /**
  * Maximum number of visits a bee can make before it dies.
@@ -49,13 +49,12 @@
 /**
  * Minimum time (in seconds) a bee spends outside the hive.
  */
-#define MIN_OUTSIDE_TIME 10
+#define MIN_OUTSIDE_TIME 5
 
 /**
  * Maximum time (in seconds) a bee spends outside the hive.
  */
-#define MAX_OUTSIDE_TIME 20
-
+#define MAX_OUTSIDE_TIME 10
 /**
  * Console color codes for pretty-printed messages.
  * These can be used to differentiate log levels when printing to the terminal.
