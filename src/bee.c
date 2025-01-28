@@ -7,17 +7,26 @@
 #include "common.h"
 
 /**
+ * chooseEntrance:
+ * Wybiera wejście na podstawie długości kolejek.
+ * Jeśli kolejki są równe, wybiera losowo.
+ * Jeśli kolejki są różne, wybiera wejście z krótszą kolejką.
+ *
+ * @param beesWaiting Tablica z liczbą pszczół czekających na każde wejście.
+ * @param seed Ziarno dla generatora liczb losowych.
+ * @return Indeks wybranego wejścia (0 lub 1).
+ */
+int chooseEntrance(int beesWaiting[2], unsigned int* seed) {
+    if (abs(beesWaiting[0] - beesWaiting[1]) <= 1) {
+        return rand_r(seed) % 2; // Losowo, jeśli kolejki są równe
+    } else {
+        return (beesWaiting[0] < beesWaiting[1]) ? 0 : 1; // Krótsza kolejka
+    }
+}
+
+/**
  * beeWorker:
  * Implements the behavior of a worker bee in the hive simulation.
- *
- * Detailed functionality:
- * 1. Attaches to shared memory for hive data and semaphores.
- * 2. Manages the bee's lifecycle, including entering and exiting the hive.
- * 3. Synchronizes hive access using semaphores to ensure proper concurrent behavior.
- * 4. Logs relevant events such as entering, exiting, and dying.
- * 5. Cleans up shared memory attachments before termination.
- *
- * @param arg Pointer to BeeArgs containing the bee's individual and shared parameters.
  */
 void beeWorker(BeeArgs* arg) {
     BeeArgs* bee = arg;
@@ -36,93 +45,80 @@ void beeWorker(BeeArgs* arg) {
     unsigned int seed = (unsigned int)time(NULL) ^ (getpid() << 16) ^ (bee->id << 8);
 
     // Handle bees born in the hive
-if (bee->startInHive) {
-    logMessage(LOG_INFO, "[Bee %d] Starting in the hive.", bee->id);
+    if (bee->startInHive) {
+        logMessage(LOG_INFO, "[Bee %d] Starting in the hive.", bee->id);
 
-    // Simulate initial time spent inside the hive
-    int timeInHive = (rand_r(&seed) % (1)) + (bee->T_inHive);
-    sleep(timeInHive);
+        // Simulate initial time spent inside the hive
+        int timeInHive = (rand_r(&seed) % (1)) + (bee->T_inHive);
+        sleep(timeInHive);
 
-    // Lock hive access to update the number of bees in the hive
-    if (sem_wait(&bee->semaphores->hiveSem) == -1) {
-        handleError("[Bee] sem_wait (hiveSem)", -1, bee->semid);
-    }
+        // Lock hive access to update the number of bees in the hive
+        if (sem_wait(&bee->semaphores->hiveSem) == -1) {
+            handleError("[Bee] sem_wait (hiveSem)", -1, bee->semid);
+        }
 
-    // Choose an entrance for exiting, based on the queue length at each entrance
-    int entrance;
-    if (bee->hive->beesWaiting[0] < bee->hive->beesWaiting[1]) {
-        entrance = 0;
-    } else if (bee->hive->beesWaiting[0] > bee->hive->beesWaiting[1]) {
-        entrance = 1;
-    } else {
-        // Randomly choose if the queues are of equal length
-        entrance = rand_r(&seed) % 2;
-    }
+        // Choose an entrance for exiting, based on the queue length at each entrance
+        int entrance = chooseEntrance(bee->hive->beesWaiting, &seed);
 
-    // Increment the count of bees waiting at the selected entrance
-    bee->hive->beesWaiting[entrance]++;
-    if (sem_post(&bee->semaphores->hiveSem) == -1) {
-        handleError("[Bee] sem_post (hiveSem)", -1, bee->semid);
-    }
+        // Increment the count of bees waiting at the selected entrance
+        bee->hive->beesWaiting[entrance]++;
+        if (sem_post(&bee->semaphores->hiveSem) == -1) {
+            handleError("[Bee] sem_post (hiveSem)", -1, bee->semid);
+        }
 
-    // Join the FIFO queue at the chosen entrance
-    if (sem_wait(&bee->semaphores->fifoQueue[entrance]) == -1) {
-        handleError("[Bee] sem_wait (fifoQueue) failed", -1, bee->semid);
-    }
+        // Join the FIFO queue at the chosen entrance
+        if (sem_wait(&bee->semaphores->fifoQueue[entrance]) == -1) {
+            handleError("[Bee] sem_wait (fifoQueue) failed", -1, bee->semid);
+        }
 
-    // Attempt to access the entrance
-    if (sem_wait(&bee->semaphores->entranceSem[entrance]) == -1) {
-        // Release the FIFO queue semaphore since the entrance is unavailable
+        // Attempt to access the entrance
+        if (sem_wait(&bee->semaphores->entranceSem[entrance]) == -1) {
+            // Release the FIFO queue semaphore since the entrance is unavailable
+            if (sem_post(&bee->semaphores->fifoQueue[entrance]) == -1) {
+                handleError("[Bee] sem_post (fifoQueue) failed", -1, bee->semid);
+            }
+            // Explicitly handle the case without `continue` since there's no loop
+            logMessage(LOG_ERROR, "[Bee %d] Entrance %d unavailable during start, exiting hive aborted.", bee->id, entrance);
+            bee->startInHive = false; // Mark as having exited, even if aborted
+            return; // Exit the function early for this bee
+        }
+
+        // Decrement the count of waiting bees
+        if (sem_wait(&bee->semaphores->hiveSem) == -1) {
+            handleError("[Bee] sem_wait (hiveSem)", -1, bee->semid);
+        }
+        bee->hive->beesWaiting[entrance]--;
+
+        // Exit the hive properly through the queue
+        usleep(100000);
+        bee->hive->currentBeesInHive--;
+        logMessage(LOG_INFO, "[Bee %d] Leaving through entrance %d. (Bees in hive: %d)", bee->id, entrance, bee->hive->currentBeesInHive);
+
+        if (sem_post(&bee->semaphores->hiveSem) == -1) {
+            handleError("[Bee] sem_post (hiveSem)", -1, bee->semid);
+        }
+
+        if (sem_post(&bee->semaphores->entranceSem[entrance]) == -1) {
+            handleError("[Bee] sem_post (entranceSem)", -1, bee->semid);
+        }
+
         if (sem_post(&bee->semaphores->fifoQueue[entrance]) == -1) {
             handleError("[Bee] sem_post (fifoQueue) failed", -1, bee->semid);
         }
-        // Explicitly handle the case without `continue` since there's no loop
-        logMessage(LOG_ERROR, "[Bee %d] Entrance %d unavailable during start, exiting hive aborted.", bee->id, entrance);
-        bee->startInHive = false; // Mark as having exited, even if aborted
-        return; // Exit the function early for this bee
+
+        bee->startInHive = false; // Mark that the bee has left the hive initially
     }
-
-    // Decrement the count of waiting bees
-    if (sem_wait(&bee->semaphores->hiveSem) == -1) {
-        handleError("[Bee] sem_wait (hiveSem)", -1, bee->semid);
-    }
-    bee->hive->beesWaiting[entrance]--;
-
-    // Exit the hive properly through the queue
-    usleep(100000);
-    bee->hive->currentBeesInHive--;
-    logMessage(LOG_INFO, "[Bee %d] Leaving through entrance %d. (Bees in hive: %d)", bee->id, entrance, bee->hive->currentBeesInHive);
-
-    if (sem_post(&bee->semaphores->hiveSem) == -1) {
-        handleError("[Bee] sem_post (hiveSem)", -1, bee->semid);
-    }
-
-    if (sem_post(&bee->semaphores->entranceSem[entrance]) == -1) {
-        handleError("[Bee] sem_post (entranceSem)", -1, bee->semid);
-    }
-
-    if (sem_post(&bee->semaphores->fifoQueue[entrance]) == -1) {
-        handleError("[Bee] sem_post (fifoQueue) failed", -1, bee->semid);
-    }
-
-    bee->startInHive = false; // Mark that the bee has left the hive initially
-}
 
     // Main lifecycle of the bee
     while (bee->visits < bee->maxVisits) {
+        int sleepTimeOutside = (rand_r(&seed) % (MAX_OUTSIDE_TIME - MIN_OUTSIDE_TIME + 1)) + MIN_OUTSIDE_TIME;
+        sleep(sleepTimeOutside); 
         // Select an entrance for entering the hive
         if (sem_wait(&bee->semaphores->hiveSem) == -1) {
             handleError("[Bee] sem_wait (hiveSem) failed", -1, bee->semid);
         }
 
-        int entrance;
-        if (bee->hive->beesWaiting[0] < bee->hive->beesWaiting[1]) {
-            entrance = 0;
-        } else if (bee->hive->beesWaiting[0] > bee->hive->beesWaiting[1]) {
-            entrance = 1;
-        } else {
-            entrance = rand_r(&seed) % 2;
-        }
+        int entrance = chooseEntrance(bee->hive->beesWaiting, &seed);
 
         bee->hive->beesWaiting[entrance]++;
         if (sem_post(&bee->semaphores->hiveSem) == -1) {
@@ -185,25 +181,19 @@ if (bee->startInHive) {
             handleError("[Bee] sem_wait (hiveSem) failed", -1, bee->semid);
         }
 
-        if (bee->hive->beesWaiting[0] < bee->hive->beesWaiting[1]) {
-            entrance = 0;
-        } else if (bee->hive->beesWaiting[0] > bee->hive->beesWaiting[1]) {
-            entrance = 1;
-        } else {
-            entrance = rand_r(&seed) % 2;
-        }
+        int leaving = chooseEntrance(bee->hive->beesWaiting, &seed);
 
-        bee->hive->beesWaiting[entrance]++;
+        bee->hive->beesWaiting[leaving]++;
         if (sem_post(&bee->semaphores->hiveSem) == -1) {
             handleError("[Bee] sem_post (hiveSem)", -1, bee->semid);
         }
 
-        if (sem_wait(&bee->semaphores->fifoQueue[entrance]) == -1) {
+        if (sem_wait(&bee->semaphores->fifoQueue[leaving]) == -1) {
             handleError("[Bee] sem_wait (fifoQueue) failed", -1, bee->semid);
         }
 
-        if (sem_wait(&bee->semaphores->entranceSem[entrance]) == -1) {
-            if (sem_post(&bee->semaphores->fifoQueue[entrance]) == -1) {
+        if (sem_wait(&bee->semaphores->entranceSem[leaving]) == -1) {
+            if (sem_post(&bee->semaphores->fifoQueue[leaving]) == -1) {
                 handleError("[Bee] sem_post (fifoQueue) failed", -1, bee->semid);
             }
             continue;
@@ -212,27 +202,25 @@ if (bee->startInHive) {
         if (sem_wait(&bee->semaphores->hiveSem) == -1) {
             handleError("[Bee] sem_wait (hiveSem)", -1, bee->semid);
         }
-        bee->hive->beesWaiting[entrance]--;
+        bee->hive->beesWaiting[leaving]--;
 
         // Successfully exiting the hive
         usleep(100000);
         bee->hive->currentBeesInHive--;
-        logMessage(LOG_INFO, "[Bee %d] Leaving through entrance %d. (Bees in hive: %d)", bee->id, entrance, bee->hive->currentBeesInHive);
+        logMessage(LOG_INFO, "[Bee %d] Leaving through entrance %d. (Bees in hive: %d)", bee->id, leaving, bee->hive->currentBeesInHive);
 
         if (sem_post(&bee->semaphores->hiveSem) == -1) {
             handleError("[Bee] sem_post (hiveSem)", -1, bee->semid);
         }
-        if (sem_post(&bee->semaphores->entranceSem[entrance]) == -1) {
+        if (sem_post(&bee->semaphores->entranceSem[leaving]) == -1) {
             handleError("[Bee] sem_post (entranceSem)", -1, bee->semid);
         }
-        if (sem_post(&bee->semaphores->fifoQueue[entrance]) == -1) {
+        if (sem_post(&bee->semaphores->fifoQueue[leaving]) == -1) {
             handleError("[Bee] sem_post (fifoQueue) failed", -1, bee->semid);
         }
 
         // Simulate time spent outside the hive
         bee->visits++;
-        int sleepTimeOutside = (rand_r(&seed) % (MAX_OUTSIDE_TIME - MIN_OUTSIDE_TIME + 1)) + MIN_OUTSIDE_TIME;
-        sleep(sleepTimeOutside); // Wait outside the hive
     }
 
     // Final steps when the bee "dies"
