@@ -48,8 +48,13 @@ void handleSignalAddFrames(int signum) {
         handleError("[Beekeeper] sem_wait (hiveSem)", gBeekeeperArgs->shmid, gBeekeeperArgs->semid);
     }
 
-    hive->N *= 2; // Double the hive size
-    logMessage(LOG_INFO, "[Beekeeper - Signal] Added frames. New N = %d", hive->N);
+    if (hive->N * 2 > MAX_BEES) {
+        hive->N = MAX_BEES;
+        logMessage(LOG_WARNING, "[Beekeeper - Signal] Hive size capped at MAXBEES = %d", MAX_BEES);
+    } else {
+        hive->N *= 2;
+        logMessage(LOG_INFO, "[Beekeeper - Signal] Added frames. New N = %d", hive->N);
+    }
 
     if (sem_post(&semaphores->hiveSem) == -1) {
         handleError("[Beekeeper] sem_post (hiveSem)", gBeekeeperArgs->shmid, gBeekeeperArgs->semid);
