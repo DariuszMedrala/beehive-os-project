@@ -40,7 +40,8 @@ void beeWorker(BeeArgs* arg) {
     // Handle bees born in the hive
     if (bee->startInHive) {
         logMessage(LOG_INFO, "[Bee %d] Starting in the hive.", bee->id);
-        int timeInHive = (rand_r(&seed) % (bee->T_inHive / 2 + 1)) + (bee->T_inHive / 2);
+    
+        int timeInHive = (rand_r(&seed) % (bee->T_inHive / 2 + 1)) + (bee->T_inHive);
         sleep(timeInHive);
         bee->startInHive = false;
         bee->hive->currentBeesInHive--;
@@ -70,7 +71,7 @@ void beeWorker(BeeArgs* arg) {
             handleError("[Bee] sem_wait (hiveSem) failed", -1, bee->semid);
         }
 
-        // Enter the hive
+        usleep(1000000);// Enter the hive
         bee->hive->currentBeesInHive++;
         logMessage(LOG_INFO, "[Bee %d] Entering through entrance %d. (Bees in hive: %d)", bee->id, entrance, bee->hive->currentBeesInHive);
 
@@ -87,7 +88,7 @@ void beeWorker(BeeArgs* arg) {
         }
 
         // Stay in the hive for a random time
-        int timeInHive = (rand_r(&seed) % (bee->T_inHive / 2 + 1)) + (bee->T_inHive / 2);
+        int timeInHive = (rand_r(&seed) % (bee->T_inHive / 2 + 1)) + (bee->T_inHive);
         sleep(timeInHive);
 
         // Leave the hive

@@ -139,10 +139,17 @@ int main(int argc, char* argv[]) {
 
     // Terminate the queen and beekeeper processes
     if (kill(queenPid, SIGTERM) == -1) {
-        handleError("[MAIN] Failed to terminate queen process", shmid, semid);
+    handleError("[MAIN] Failed to terminate queen process", shmid, semid);
     }
+    if (waitpid(queenPid, NULL, 0) == -1) {
+    handleError("[MAIN] Failed to wait for queen process", shmid, semid);
+    }
+
     if (kill(beekeeperPid, SIGTERM) == -1) {
-        handleError("[MAIN] Failed to terminate beekeeper process", shmid, semid);
+    handleError("[MAIN] Failed to terminate beekeeper process", shmid, semid);
+    }
+    if (waitpid(beekeeperPid, NULL, 0) == -1) {
+    handleError("[MAIN] Failed to wait for beekeeper process", shmid, semid);
     }
 
     // Cleanup shared memory and semaphores

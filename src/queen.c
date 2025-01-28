@@ -43,6 +43,8 @@ void queenWorker(QueenArgs* arg) {
         if (sem_wait(&queen->semaphores->hiveSem) == -1) {
             handleError("[Queen] sem_wait (hiveSem) failed", queen->shmid, queen->semid);
         }
+        // Reap any terminated child processes to prevent zombies
+        while (waitpid(-1, NULL, WNOHANG) > 0);
 
         // Calculate available space in the hive
         int freeSpace = calculateP(queen->hive->N) - queen->hive->currentBeesInHive;
