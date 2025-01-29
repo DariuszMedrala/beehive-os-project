@@ -173,8 +173,8 @@ void beeWorker(BeeArgs* arg) {
         }
 
         // Stay in the hive for a random time
-        int timeInHive = (rand_r(&seed) % (bee->T_inHive / 2 + 1)) + (bee->T_inHive);
-        sleep(timeInHive);
+        
+        sleep(T_IN_HIVE);
 
         // Exit the hive (same logic as entering)
         if (sem_wait(&bee->semaphores->hiveSem) == -1) {

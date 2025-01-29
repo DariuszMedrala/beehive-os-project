@@ -39,6 +39,7 @@ HiveData* getHiveDataAndSemaphores(HiveSemaphores** semaphores) {
  */
 void handleSignalAddFrames(int signum) {
     (void)signum; // Unused parameter
+    logMessage(LOG_INFO, "[Beekeeper] Received SIGUSR1 signal.");
 
     HiveSemaphores* semaphores;
     HiveData* hive = getHiveDataAndSemaphores(&semaphores);
